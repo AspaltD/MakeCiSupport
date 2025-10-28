@@ -1,0 +1,32 @@
+Builder logfile: Created by Builder.exe
+Unit cell origin at: 0, 0, 0
+Component x, y and z of vector a: 7.5317, 0, 0
+Component x, y and z of vector b: 3.37908e-12, 11.3884, 0
+Component x, y and z of vector c: -3.13836, 7.55872e-12, 22.1149
+add atom #1:  S-1-1: x=-1.15939, y=-2.72866, z=5.54797 (radii: 1.02, 1.02, color [255, 200, 50])
+generate unit cell atoms through symmetry operations:
+add atom #2:  S-1-2: x=-0.409794, y=2.96554, z=5.50949 (radii: 1.02, 1.02, color [255, 200, 50])
+add atom #3:  S-1-3: x=-1.97898, y=2.72866, z=16.567 (radii: 1.02, 1.02, color [255, 200, 50])
+add atom #4:  S-1-4: x=4.80313, y=8.42286, z=16.6054 (radii: 1.02, 1.02, color [255, 200, 50])
+'
+' connect atoms into groups:
+sort scaled cartesian
+
+indexed insertion sort:
+
+indexed insertion sort:
+
+indexed insertion sort:
+'
+' connect atoms into fragments first:
+
+connect 4 fragments into groups:
+linked as group #0: fragment # 0
+linked as group #1: fragment # 1
+linked as group #2: fragment # 2
+linked as group #3: fragment # 3
+delete atom #1:  S-1-1: x=-1.15939, y=-2.72866, z=5.54797 (radii: 1.02, 1.02, color [255, 200, 50])
+delete atom #2:  S-1-2: x=-0.409794, y=2.96554, z=5.50949 (radii: 1.02, 1.02, color [255, 200, 50])
+delete atom #3:  S-1-3: x=-1.97898, y=2.72866, z=16.567 (radii: 1.02, 1.02, color [255, 200, 50])
+delete atom #4:  S-1-4: x=4.80313, y=8.42286, z=16.6054 (radii: 1.02, 1.02, color [255, 200, 50])
+Builder logfile: Closed by Builder.exe

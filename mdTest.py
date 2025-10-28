@@ -74,7 +74,13 @@ def makeListTest():
                     print("readline is over.(400 lines)")
                     break
                 case _:
-                    if "_cell_length_" in test_line:
+                    if "_space_group_IT_number" in test_line:
+                        spaceNumStock = test_line.strip().split()
+                        testList.append([spaceNumStock[0][1:],spaceNumStock[1]])
+                    elif "_space_group_name_H-M_alt" in test_line:
+                        spaceGStock = test_line.strip().split()
+                        testList.append([spaceGStock[0][1:],test_line.strip().split("'")[1]])
+                    elif "_cell_length_" in test_line:
                         lengthStock = test_line.strip().split()
                         testList.append([lengthStock[0][1:],lengthStock[1].split('(')[0]])
                         #print(test_line.strip().split())
