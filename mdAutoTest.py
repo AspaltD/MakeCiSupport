@@ -179,6 +179,8 @@ def AutoRunSample3():
         combo2.select(space_group)
         print(f"Space Group: {space_group}")
         #Cell Info
+        #time.sleep(0.3)
+        #pag.press('tab')
         crystal_dlg.child_window(title="a:", control_type="Edit").set_edit_text(atoms_info[4][1])
         for i in range(5,7):
             pag.press('tab')
@@ -238,17 +240,25 @@ def AutoRunSample3():
             atom_list_down.click()
             """
             #atom_dlg.type_keys('{TAB}'+'{TAB}',with_tabs=True)
+            """
             if x_close == 0 and y_close == 0:
                 x_close,y_close = pag.position()
                 print(f'x_close: {x_close}, y: {y_close}')
+            """
             pag.press('tab',2)
             n = 1
+    print(n)
 
     print("Atoms insert fin.")
+    time.sleep(0.2)
+    pag.press('enter')
     #pag.press('tab')
     #pag.press('enter')
-    atom_dlg.child_window(title="Close", auto_id="1", control_type="Button").click()
-    crystal_dlg.child_window(title="OK", auto_id="1", control_type="Button").click()
+    #atom_dlg.child_window(title="Close", auto_id="1", control_type="Button").click()
+    pag.press('tab',4)
+    time.sleep(0.2)
+    pag.press('enter')
+    #crystal_dlg.child_window(title="OK", auto_id="1", control_type="Button").click()
     print("AutoRun completed.")
 
 
