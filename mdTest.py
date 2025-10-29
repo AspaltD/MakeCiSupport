@@ -112,15 +112,21 @@ def makeListTest():
 
                         if atomNum == 1 and atomInnerNum == 1:
                             testList.append([atomName,str(atomNum),str(atomInnerNum),atomsStock[2].split('(')[0],atomsStock[3].split('(')[0],atomsStock[4].split('(')[0]])
+                            if not atomsStock[7] == "1":
+                                testList[-1].append(atomsStock[7].split('(')[0])
                             atomInnerNum = 2
                         elif atomName == testList[-1][0]:
                             atomNum = int(testList[-1][1])
                             atomInnerNum = int(testList[-1][2]) + 1
                             testList.append([atomName,str(atomNum),str(atomInnerNum),atomsStock[2].split('(')[0],atomsStock[3].split('(')[0],atomsStock[4].split('(')[0]])
+                            if not atomsStock[7] == "1":
+                                testList[-1].append(atomsStock[7].split('(')[0])
                         else:
                             atomNum = int(testList[-1][1]) + 1
                             atomInnerNum = 1
                             testList.append([atomName,str(atomNum),str(atomInnerNum),atomsStock[2].split('(')[0],atomsStock[3].split('(')[0],atomsStock[4].split('(')[0]])
+                            if not atomsStock[7] == "1":
+                                testList[-1].append(atomsStock[7].split('(')[0])
 
                         #print(test_line.strip())
             i+=1
