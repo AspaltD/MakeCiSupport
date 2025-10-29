@@ -117,17 +117,32 @@ def AutoRunSample2():
     print("hello atom!!!")
 
     #下スクロール(スクロールバーの下側の方)
-    atom_list_down = atom_dlg.child_window(auto_id="1491", control_type="ScrollBar").child_window(title="下へドラッグ", auto_id="DownPageButton", control_type="Button")
+    atom_list_down = atom_dlg.child_window(auto_id="1491", control_type="ScrollBar").child_window(title="1 行下", auto_id="DownButton", control_type="Button")
+    #atom_list_down = atom_dlg.child_window(auto_id="1491", control_type="ScrollBar").child_window(title="下へドラッグ", auto_id="DownPageButton", control_type="Button")
     n: int = 1
-    for atoms in atoms_info[10:11]:
-        for i in range(0,6):
+    for atoms in atoms_info[10:]:
+        """
+        for i in range(0,6,2):
             #main_win.child_window(title="Define Crystal Structure", control_type="Window").child_window(title="Atom Positions", control_type="Window").type_keys(atoms[i]+'{TAB}', with_tabs=True)
-            atom_dlg.type_keys(atoms[i]+'{TAB}', with_tabs=True)
+            atom_dlg.type_keys(atoms[i]+'{TAB}'+atoms[i+1]+'{TAB}', with_tabs=True)
+        """
+        atom_dlg.type_keys(atoms[0]+'{TAB}'+atoms[1]+'{TAB}'+atoms[2]+'{TAB}'+atoms[3]+'{TAB}'+atoms[4]+'{TAB}'+atoms[5]+'{TAB}', with_tabs=True)
+        #atom_dlg.type_keys(atoms[3]+'{TAB}'+atoms[4]+'{TAB}'+atoms[5]+'{TAB}', with_tabs=True)
+
         n += 1
         if n == 10:
             atom_list_down.click_input()
             atom_list_down.click()
             atom_list_down.click()
+            atom_list_down.click()
+            atom_list_down.click()
+            atom_list_down.click()
+            atom_list_down.click()
+            atom_list_down.click()
+            atom_list_down.click()
+            atom_list_down.click()
+            atom_list_down.click()
+            atom_dlg.type_keys('{TAB}'+'{TAB}'+'{TAB}',with_tabs=True)
             n = 1
 
     print("Atoms insert fin.")
