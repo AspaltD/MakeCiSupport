@@ -3,6 +3,7 @@ import os
 #import re
 
 testPath = "C:/Users/asufa/OneDrive/デスクトップ/1006_1h/MVAuNiUV_autored.cif"
+#testPath2 = "C:/Users/asufa/OneDrive/デスクトップ/1008_53h/MVAuNiUV53h_autored.cif"
 testPath2 = "C:/Users/asufa/OneDrive/デスクトップ/test_autored.cif"
 testOutPath = "C:/Users/asufa/OneDrive/デスクトップ/1006_1h_def/outpuuuut.txt"
 fileName = os.path.splitext(os.path.basename(testPath))[0]
