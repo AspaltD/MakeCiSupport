@@ -1,11 +1,14 @@
 
 import os
+from logging import getLogger, config
+import json
+import pprint
 #import re
 
 testPath = "C:/Users/asufa/OneDrive/デスクトップ/1006_1h/MVAuNiUV_autored.cif"
-#testPath2 = "C:/Users/asufa/OneDrive/デスクトップ/1008_53h/MVAuNiUV53h_autored.cif"
-testPath2 = "C:/Users/asufa/OneDrive/デスクトップ/test_autored.cif"
-testOutPath = "C:/Users/asufa/OneDrive/デスクトップ/1006_1h_def/outpuuuut.txt"
+testPath2 = "D:/Saturn/1031_1/MVAuNi_autored.cif"
+#testPath2 = "C:/Users/asufa/OneDrive/デスクトップ/test_autored.cif"
+testOutPath = "D:/Saturn/1031_1/outpuuuut.txt"
 fileName = os.path.splitext(os.path.basename(testPath))[0]
 fileName2 = os.path.splitext(os.path.basename(testPath2))[0]
 
@@ -141,10 +144,74 @@ def makeListTest():
     with open(testOutPath, mode='w') as f:
         f.write('\n'.join(outputLines))
 
+def LoggingTest():
+    """
+    with open('logging_config.json','r')as f:
+        log_conf = json.load(f)
+        config.dictConfig(log_conf)
+    """
+    logging_config = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'exampleFormatter': {
+                'format': '%(asctime)s - %(levelname)s - %(message)s',
+                'datefmt': '%Y-%m-%d %H:%M:%S'
+            }
+        },
+        'handlers': {
+            'consoleHandler': {
+                'class': 'logging.StreamHandler',
+                'level': 'DEBUG',
+                'formatter': 'exampleFormatter',
+                'stream': 'ext://sys.stdout'
+            },
+            'fileHandler': {
+                'class': 'logging.FileHandler',
+                'level': 'DEBUG',
+                'formatter': 'exampleFormatter',
+                'filename': 'app.log',
+                'mode': 'w',
+                'encoding': 'utf-8'
+            }
+        },
+        'loggers': {
+            '': {  # ルートロガーの設定
+                'level': 'DEBUG',
+                'handlers': ['consoleHandler', 'fileHandler']
+            },
+            'exampleLogger': {  # 特定のロガー設定
+                'level': 'DEBUG',
+                'handlers': ['consoleHandler', 'fileHandler'],
+                'propagate': False
+            }
+        }
+    }
+    config.dictConfig(logging_config)
 
+    logger = getLogger(__name__)
+
+    logger.info("Info_Hello!!!!")
+    logger.warning("warning_Hello!!!!")
+
+def LoggingTest2():
+
+    with open('logging_config.json',mode='r',encoding='utf_8') as f:
+        log_conf = json.load(f)
+        #pprint.pprint(log_conf)
+        config.dictConfig(log_conf)
+
+    #config.dictConfig(log_conf)
+
+    logger = getLogger(__name__)
+
+    logger.info("Info_Hello!!!!")
+    logger.warning("warning_Hello!!!!")
 
 
 
 #addressSort()
 #openTest()
-makeListTest()
+#makeListTest()
+#LoggingTest()
+LoggingTest2()
