@@ -1,6 +1,10 @@
 import flet as ft
 import os
-from typing import Optional
+from typing import Optional, Dict
+
+#? ファイルピッカーの宣言(コンテンツ内で使いたいのにPageでのOverlay作業が必要なためグローバル変数で宣言)
+#! 改善案募集中：ﾌｧｲﾙﾋﾟｯｶｰの同一の機能を同じコンテナ内で使うにはそれぞれで個別のﾌｧｲﾙﾋﾟｯｶｰが必要っぽい。
+file_pickers: Dict[str,ft.FilePicker]
 
 class PlaceHoldeeeer(ft.Placeholder):
     def __init__(self, expand:int=404, color=ft.Colors.random()):
@@ -99,10 +103,9 @@ class TabBottomButton(ft.FilledButton):
         return re_text
 
 class TabContentsContainer(ft.Container):
-    def __init__(self, workIdx:int, filePicker:Optional[ft.FilePicker]=None):
+    def __init__(self, workIdx:int):
         super().__init__()
         self.workIdx = workIdx
-        self.filePicker = filePicker
         self.expand = 10
         self.padding = 10
         #self.height = 540
@@ -121,7 +124,6 @@ class FilePickerBar(ft.Row):
 
         self.spacing = 0
 
-        self.controls.append(self.filePickeeeer)
         self.controls = [
             self.textF_path,
             ft.FilledButton(expand=1,text="File", on_click=lambda _: self.filePickeeeer.pick_files(allowed_extensions=["txt"]))
@@ -139,16 +141,19 @@ class FilePickerBar(ft.Row):
 
 
 class Tab_0_FilePathSelect(TabContentsContainer):
-    def __init__(self, filePicker:ft.FilePicker):
-        super().__init__(0,filePicker)
+    def __init__(self):
+        super().__init__(0)
+
+        self.pick1 = FilePickerBar(file_pickers["builder_pick"],"Builder Path")
+        self.pick2 = FilePickerBar(file_pickers["cif_pick"],"'.cif' File Path")
 
         self.content = ft.Column([
             ft.Text("Builder Path"),
-            FilePickerBar(self.filePicker,"Builder Path"),
+            self.pick1,
             ft.Text("'.cif' File Path"),
-            FilePickerBar(self.filePicker,"'.cif' File Path"),
-            ft.Text("Output Path"),
-            FilePickerBar(self.filePicker,"Output Path")
+            self.pick2,
+            #ft.Text("Output Path"),
+            #FilePickerBar(self.filePicker,"Output Path")
         ])
 
 
@@ -156,10 +161,9 @@ class Tab_0_FilePathSelect(TabContentsContainer):
 
 
 class MakeCiApp(ft.Container):
-    def __init__(self, filePicker:ft.FilePicker):
+    def __init__(self):
         super().__init__()
         #self.width = 800
-        self.filePicker = filePicker
 
         #? パーツのインスタンス生成(宣言)
         self.naviBar = NaviBar()
@@ -177,7 +181,7 @@ class MakeCiApp(ft.Container):
             expand=10,
             controls=[
                 PlaceHoldeeeer(color=ft.Colors.with_opacity(0.2,ft.Colors.random())),
-                Tab_0_FilePathSelect(self.filePicker),
+                Tab_0_FilePathSelect(),
                 self.testholder
             ]
         )
@@ -248,12 +252,16 @@ def main(page: ft.Page):
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.update()
 
-    filePickeeeer = ft.FilePicker()
+    #? ファイルピッカーの追加はここで。(グローバル変数を関数内で編集するには一度宣言が必要っぽい)
+    global file_pickers
+    file_pickers = {"builder_pick": ft.FilePicker(), "cif_pick": ft.FilePicker()}
+        # ↓ここですべてのﾌｧｲﾙﾋﾟｯｶｰのPageへのOverlayをしてる。
+        #  新規にﾌｧｲﾙﾋﾟｯｶｰを追加してもここに手を加える必要はない
+    for i in file_pickers.keys():
+        page.overlay.append(file_pickers.get(i))
+        page.update()
 
-    page.overlay.append(filePickeeeer)
-    page.update()
-
-    makeCi = MakeCiApp(filePicker=filePickeeeer)
+    makeCi = MakeCiApp()
 
     page.add(makeCi)
     page.update()

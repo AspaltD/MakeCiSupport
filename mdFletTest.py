@@ -25,7 +25,6 @@ def main(page: ft.Page):
 
 def on_dialog_result(e: ft.FilePickerResultEvent):
     if e.files:
-        
         print(f"Selected files:{e.files[0].path},{type(e.files[0].path)}")
         print(f"Selected files:{e.files[0].name},{type(e.files[0].name)}")
         print("Selected file or directory:", e.path)
