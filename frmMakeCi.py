@@ -1,5 +1,15 @@
 import flet as ft
+import os
+from typing import Optional
 
+class PlaceHoldeeeer(ft.Placeholder):
+    def __init__(self, expand:int=404, color=ft.Colors.random()):
+        super().__init__()
+        if expand == 404:
+            self.expand = True
+        else:
+            self.expand = expand
+        self.color = color
 class NaviButton(ft.FilledButton):
     def __init__(self, workIdx:int, button_clicked, height=40):
         super().__init__()
@@ -45,14 +55,14 @@ class NaviBar(ft.Column):
         #self.alignment = ft.MainAxisAlignment.CENTER
         #self.expand = True
 
-class TabBottomButton(ft.Button):
-    def __init__(self, pageIdx:int, workIdx:int=0, buttonClicked):
+class TabBottomButton(ft.FilledButton):
+    def __init__(self,buttonClicked, pageIdx:int, workIdx:int=0):
         super().__init__()
         self.pageIdx = pageIdx
         self.workIdx = workIdx
         self.on_click = buttonClicked
         self.text = self.select_text()
-        self.width = 40
+        self.width = 120
 
     #? workIdx = 0:Exit, 1:Next
 
@@ -88,37 +98,68 @@ class TabBottomButton(ft.Button):
                 pass
         return re_text
 
-class TabContents(ft.Container):
-    def __init__(self, workIdx):
+class TabContentsContainer(ft.Container):
+    def __init__(self, workIdx:int, filePicker:Optional[ft.FilePicker]=None):
         super().__init__()
         self.workIdx = workIdx
-        self.expand = True
+        self.filePicker = filePicker
+        self.expand = 10
+        self.padding = 10
         #self.height = 540
         self.bgcolor = ft.Colors.LIGHT_BLUE_100
         #self.border = ft.border.all(1,ft.Colors.BLACK)
 
-        self.bottomButtons = ft.Row(
-            expand=1,
-            alignment=ft.MainAxisAlignment.END,
-            controls=[
-                #TabBottomButton(pageIdx=0)
-            ]
-        )
+class FilePickerBar(ft.Row):
+    def __init__(self, filePicker:ft.FilePicker, hintText:str):
+        super().__init__()
 
-        self.content = ft.Column(
-            expand=True,
-            controls=[
-                ft.Text(value="TabContents_0")
-            ],
-            #expand_loose=False
+        self.fileName:str
+        self.filePath:str
+        self.filePickeeeer = filePicker
+        self.filePickeeeer.on_result = self.pick_files_result
+        self.textF_path = ft.TextField(expand=9,hint_text=hintText,dense=True)
 
-        )
+        self.spacing = 0
+
+        self.controls.append(self.filePickeeeer)
+        self.controls = [
+            self.textF_path,
+            ft.FilledButton(expand=1,text="File", on_click=lambda _: self.filePickeeeer.pick_files(allowed_extensions=["txt"]))
+        ]
+
+    def pick_files_result(self, e: ft.FilePickerResultEvent):
+        if e.files:
+            self.fileName = e.files[0].name
+            self.filePath = e.files[0].path.replace(os.sep, '/')
+            print(f"Selected files:name={e.files[0].name}")
+            print(f"Selected files:{self.filePath}")
+            self.textF_path.value = self.filePath
+        self.update()
+
+
+
+class Tab_0_FilePathSelect(TabContentsContainer):
+    def __init__(self, filePicker:ft.FilePicker):
+        super().__init__(0,filePicker)
+
+        self.content = ft.Column([
+            ft.Text("Builder Path"),
+            FilePickerBar(self.filePicker,"Builder Path"),
+            ft.Text("'.cif' File Path"),
+            FilePickerBar(self.filePicker,"'.cif' File Path"),
+            ft.Text("Output Path"),
+            FilePickerBar(self.filePicker,"Output Path")
+        ])
+
+
+
 
 
 class MakeCiApp(ft.Container):
-    def __init__(self):
+    def __init__(self, filePicker:ft.FilePicker):
         super().__init__()
-        self.width = 800
+        #self.width = 800
+        self.filePicker = filePicker
 
         #? パーツのインスタンス生成(宣言)
         self.naviBar = NaviBar()
@@ -129,18 +170,36 @@ class MakeCiApp(ft.Container):
             bgcolor = ft.Colors.GREY_300,
             content = self.naviBar
         )
-        self.tabContents = TabContents(0)
-        self.tabContentsBase = ft.Container(
-            expand = 3,
-            bgcolor = ft.Colors.DEEP_ORANGE_100,
-            content = ft.Stack(
-                expand=True,
-                controls=[
-                    self.tabContents
-                ]
-            )
-            
+        #self.tabContentsContainer = TabContentsContainer(0)
+
+        self.testholder = PlaceHoldeeeer()
+        self.tabContents = ft.Stack(
+            expand=10,
+            controls=[
+                PlaceHoldeeeer(color=ft.Colors.with_opacity(0.2,ft.Colors.random())),
+                Tab_0_FilePathSelect(self.filePicker),
+                self.testholder
+            ]
         )
+        self.bottomButtons = ft.Row(
+            expand=1,
+            alignment=ft.MainAxisAlignment.END,
+            controls=[
+                TabBottomButton(buttonClicked=self.button_clicked,pageIdx=0,workIdx=1)
+            ]
+        )
+        self.tabBase = ft.Column(
+            height=540,
+            expand=3,
+            spacing=2,
+            controls=[
+                self.tabContents,
+                self.bottomButtons
+            ]
+        )
+
+
+
 
         #? パーツの個別設定
         self.naviBar.controls = [
@@ -154,22 +213,25 @@ class MakeCiApp(ft.Container):
         ]
 
         #? パーツを配置
+        
         self.content = ft.Row(
             controls=[
                 self.naviBarC,
-                self.tabContentsBase
+                self.tabBase
+                #PlaceHoldeeeer(expand=3)
             ]
         )
 
 
     def button_clicked(self, e):
-        workIdx: int = e.control.workIdx
+        workIdx:int = e.control.workIdx
         print(f"{workIdx}_Button clicked")
-        print(self.tabContents.visible)
-        if self.tabContents.visible:
-            self.tabContents.visible = False
+        print(self.testholder.visible)
+        if self.testholder.visible:
+            #self.tabContentsContainer.testholder.visible
+            self.testholder.visible = False
         else:
-            self.tabContents.visible = True
+            self.testholder.visible = True
         
 
         self.update()
@@ -186,9 +248,14 @@ def main(page: ft.Page):
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.update()
 
+    filePickeeeer = ft.FilePicker()
 
-    makeCi = MakeCiApp()
+    page.overlay.append(filePickeeeer)
+    page.update()
+
+    makeCi = MakeCiApp(filePicker=filePickeeeer)
 
     page.add(makeCi)
+    page.update()
 
 ft.app(target=main)
