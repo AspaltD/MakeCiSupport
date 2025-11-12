@@ -142,7 +142,7 @@ class FilePickerBar(ft.Row):
 
 class Tab_0_FilePathSelect(TabContentsContainer):
     def __init__(self):
-        super().__init__(0)
+        super().__init__(workIdx=0)
 
         self.pick1 = FilePickerBar(file_pickers["builder_pick"],"Builder Path")
         self.pick2 = FilePickerBar(file_pickers["cif_pick"],"'.cif' File Path")
@@ -156,7 +156,16 @@ class Tab_0_FilePathSelect(TabContentsContainer):
             #FilePickerBar(self.filePicker,"Output Path")
         ])
 
+class Tab_1_ReadData(TabContentsContainer):
+    def __init__(self):
+        super().__init__(workIdx=1)
+        self.padding = 10
 
+
+        self.readTable = ft.DataTable(
+            border = ft.border.all(2, ft.Colors.BLACK),
+            columns=[]
+        )
 
 
 
