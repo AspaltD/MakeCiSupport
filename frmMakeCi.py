@@ -9,6 +9,7 @@ file_pickers: Dict[str,ft.FilePicker]
 class PlaceHoldeeeer(ft.Placeholder):
     def __init__(self, expand:int=404, color=ft.Colors.random()):
         super().__init__()
+        self.data = 99
         if expand == 404:
             self.expand = True
         else:
@@ -103,9 +104,10 @@ class TabBottomButton(ft.FilledButton):
         return re_text
 
 class TabContentsContainer(ft.Container):
-    def __init__(self, workIdx:int):
+    def __init__(self, workIdx:int, visible:bool=True):
         super().__init__()
-        self.workIdx = workIdx
+        self.data = workIdx
+        self.visible = visible
         self.expand = 10
         self.padding = 10
         #self.height = 540
@@ -141,8 +143,8 @@ class FilePickerBar(ft.Row):
 
 
 class Tab_0_FilePathSelect(TabContentsContainer):
-    def __init__(self):
-        super().__init__(workIdx=0)
+    def __init__(self, visible:bool):
+        super().__init__(workIdx=0, visible=visible)
 
         self.pick1 = FilePickerBar(file_pickers["builder_pick"],"Builder Path")
         self.pick2 = FilePickerBar(file_pickers["cif_pick"],"'.cif' File Path")
@@ -157,14 +159,52 @@ class Tab_0_FilePathSelect(TabContentsContainer):
         ])
 
 class Tab_1_ReadData(TabContentsContainer):
-    def __init__(self):
-        super().__init__(workIdx=1)
+    def __init__(self, visible:bool):
+        super().__init__(workIdx=1, visible=visible)
         self.padding = 10
 
-
+        self.dataName = ft.TextField(expand=1,label="Data_Name",read_only=True)
+        self.cellLenA = ft.TextField(expand=1,label="Cell_Length_a",read_only=True)
+        self.cellLenB = ft.TextField(expand=1,label="Cell_Length_b",read_only=True)
+        self.cellLenC = ft.TextField(expand=1,label="Cell_Length_c",read_only=True)
+        self.cellAngleA = ft.TextField(expand=1,label="Cell_Angle_alpha",read_only=True)
+        self.cellAngleB = ft.TextField(expand=1,label="Cell_Angle_beta",read_only=True)
+        self.cellAngleC = ft.TextField(expand=1,label="Cell_Angle_gamma",read_only=True)
+        self.cellVolume = ft.TextField(expand=1,label="Cell_Volume",read_only=True)
+        self.cellLengths = ft.Row(
+            spacing=0,
+            controls=[
+                self.cellLenA,
+                self.cellLenB,
+                self.cellLenC
+                ]
+            )
+        self.cellAngles = ft.Row(
+            spacing=0,
+            controls=[
+                self.cellAngleA,
+                self.cellAngleB,
+                self.cellAngleC
+                ]
+            )
+        self.cellData = ft.Column(
+            expand=1,
+            controls=[
+                self.dataName,
+                self.cellLengths,
+                self.cellAngles
+            ]
+        )
         self.readTable = ft.DataTable(
             border = ft.border.all(2, ft.Colors.BLACK),
             columns=[]
+        )
+
+        self.content = ft.Column(
+            controls=[
+                self.cellData,
+                PlaceHoldeeeer(2)
+            ]
         )
 
 
@@ -190,8 +230,9 @@ class MakeCiApp(ft.Container):
             expand=10,
             controls=[
                 PlaceHoldeeeer(color=ft.Colors.with_opacity(0.2,ft.Colors.random())),
-                Tab_0_FilePathSelect(),
-                self.testholder
+                Tab_0_FilePathSelect(visible=True),
+                Tab_1_ReadData(visible=False)
+                #self.testholder
             ]
         )
         self.bottomButtons = ft.Row(
@@ -216,25 +257,35 @@ class MakeCiApp(ft.Container):
 
         #? パーツの個別設定
         self.naviBar.controls = [
-            NaviButton(0, self.button_clicked),
+            NaviButton(0, self.navigate_btn_clicked),
             NaviDownMark(),
-            NaviButton(1, self.button_clicked),
+            NaviButton(1, self.navigate_btn_clicked),
             NaviDownMark(),
-            NaviButton(2, self.button_clicked),
+            NaviButton(2, self.navigate_btn_clicked),
             NaviDownMark(),
-            NaviButton(3, self.button_clicked),
+            NaviButton(3, self.navigate_btn_clicked),
         ]
 
         #? パーツを配置
-        
         self.content = ft.Row(
             controls=[
                 self.naviBarC,
                 self.tabBase
-                #PlaceHoldeeeer(expand=3)
             ]
         )
 
+
+    def navigate_btn_clicked(self,e):
+        workIdx:int = e.control.workIdx
+        self.tabContents.controls[workIdx+1].visible
+        for tab in self.tabContents.controls:
+            if tab.data == workIdx:
+                tab.visible = True
+            elif tab.data == 99:
+                pass
+            else:
+                tab.visible = False
+        self.update()
 
     def button_clicked(self, e):
         workIdx:int = e.control.workIdx
