@@ -1,10 +1,12 @@
 import flet as ft
 import os
-from typing import Optional, Dict
+from typing import Optional, Dict, List
+#import mdAutoTest
 
 #? ファイルピッカーの宣言(コンテンツ内で使いたいのにPageでのOverlay作業が必要なためグローバル変数で宣言)
 #! 改善案募集中：ﾌｧｲﾙﾋﾟｯｶｰの同一の機能を同じコンテナ内で使うにはそれぞれで個別のﾌｧｲﾙﾋﾟｯｶｰが必要っぽい。
 file_pickers: Dict[str,ft.FilePicker]
+file_data: List[List[str]]
 
 class PlaceHoldeeeer(ft.Placeholder):
     def __init__(self, expand:int=404, color=ft.Colors.random()):
@@ -115,21 +117,38 @@ class TabContentsContainer(ft.Container):
         #self.border = ft.border.all(1,ft.Colors.BLACK)
 
 class FilePickerBar(ft.Row):
-    def __init__(self, filePicker:ft.FilePicker, hintText:str):
+    def __init__(self, filePicker:ft.FilePicker, workIdx:int):
         super().__init__()
 
         self.fileName:str
         self.filePath:str
+        self.data = workIdx
+        self.fileType:str
+        self.fileLabel:str
         self.filePickeeeer = filePicker
         self.filePickeeeer.on_result = self.pick_files_result
-        self.textF_path = ft.TextField(expand=9,hint_text=hintText,dense=True)
+        self.file_init_select()
+        self.textF_path = ft.TextField(expand=9,hint_text=self.fileLabel,dense=True)
 
         self.spacing = 0
 
+
         self.controls = [
             self.textF_path,
-            ft.FilledButton(expand=1,text="File", on_click=lambda _: self.filePickeeeer.pick_files(allowed_extensions=["txt"]))
+            ft.FilledButton(expand=1,text="File", on_click=lambda _: self.filePickeeeer.pick_files(allowed_extensions=[self.fileType]))
         ]
+
+    def file_init_select(self):
+        match self.data:
+            case 0:
+                self.fileType = "exe"
+                self.fileLabel = "Builder Path"
+            case 1:
+                self.fileType = "cif"
+                self.fileLabel = "'.cif' File Path"
+            case _:
+                self.fileType = "txt"
+                self.fileLabel = "404 Path"
 
     def pick_files_result(self, e: ft.FilePickerResultEvent):
         if e.files:
@@ -146,8 +165,8 @@ class Tab_0_FilePathSelect(TabContentsContainer):
     def __init__(self, visible:bool):
         super().__init__(workIdx=0, visible=visible)
 
-        self.pick1 = FilePickerBar(file_pickers["builder_pick"],"Builder Path")
-        self.pick2 = FilePickerBar(file_pickers["cif_pick"],"'.cif' File Path")
+        self.pick1 = FilePickerBar(file_pickers["builder_pick"],0)
+        self.pick2 = FilePickerBar(file_pickers["cif_pick"],1)
 
         self.content = ft.Column([
             ft.Text("Builder Path"),
@@ -162,7 +181,7 @@ class Tab_1_ReadData(TabContentsContainer):
     def __init__(self, visible:bool):
         super().__init__(workIdx=1, visible=visible)
         self.padding = 10
-
+        #格子定数用
         self.dataName = ft.TextField(expand=1,label="Data_Name",read_only=True)
         self.cellLenA = ft.TextField(expand=1,label="Cell_Length_a",read_only=True)
         self.cellLenB = ft.TextField(expand=1,label="Cell_Length_b",read_only=True)
@@ -195,10 +214,22 @@ class Tab_1_ReadData(TabContentsContainer):
                 self.cellAngles
             ]
         )
+        #原子座標用
+        
         self.readTable = ft.DataTable(
             border = ft.border.all(2, ft.Colors.BLACK),
-            columns=[]
+            columns=[
+                ft.DataColumn(ft.Text("Atom")),
+                ft.DataColumn(ft.Text("Idx1"),numeric=True),
+                ft.DataColumn(ft.Text("Idx2"),numeric=True),
+                ft.DataColumn(ft.Text("X"),numeric=True),
+                ft.DataColumn(ft.Text("Y"),numeric=True),
+                ft.DataColumn(ft.Text("Z"),numeric=True),
+                ft.DataColumn(ft.Text("Occ."),numeric=True)
+            ]
         )
+
+
 
         self.content = ft.Column(
             controls=[
