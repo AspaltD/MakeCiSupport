@@ -6,7 +6,7 @@ from typing import Optional, Dict, List
 #? ファイルピッカーの宣言(コンテンツ内で使いたいのにPageでのOverlay作業が必要なためグローバル変数で宣言)
 #! 改善案募集中：ﾌｧｲﾙﾋﾟｯｶｰの同一の機能を同じコンテナ内で使うにはそれぞれで個別のﾌｧｲﾙﾋﾟｯｶｰが必要っぽい。
 file_pickers: Dict[str,ft.FilePicker]
-file_data: List[List[str]]
+fileData: List[List[str]] = [["FileData"]]
 
 class PlaceHoldeeeer(ft.Placeholder):
     def __init__(self, expand:int=404, color=ft.Colors.random()):
@@ -63,47 +63,57 @@ class NaviBar(ft.Column):
         #self.expand = True
 
 class TabBottomButton(ft.FilledButton):
-    def __init__(self,buttonClicked, pageIdx:int, workIdx:int=0):
+    def __init__(self,buttonClicked, workIdx:int=0):
         super().__init__()
-        self.pageIdx = pageIdx
+        self.pageIdx = 0
         self.workIdx = workIdx
         self.on_click = buttonClicked
-        self.text = self.select_text()
         self.width = 120
+        self.change_init(0)
 
     #? workIdx = 0:Exit, 1:Next
 
-    def select_text(self):
-        re_text:str
-        if self.workIdx == 0:
-            re_text = "ExitApp"
-        elif self.workIdx == 1:
-            re_text = "Next"
+    def change_init(self, toPageIdx:int):
+        workIdx = self.workIdx
+        if workIdx == 0:
+            self.text = "ExitApp"
+            return
+        elif workIdx == 1:
+            self.text = "Next"
+        elif workIdx == 2:
+            self.text = "OtherFunc"
         else:
-            re_text = "--Null--"
-        match self.pageIdx:
+            self.text = "--Null--"
+            self.disabled = True
+        
+        match toPageIdx:
             case 0:
-                if self.workIdx == 1:
-                    re_text = "Read"
+                self.pageIdx = 0
+                if workIdx == 1:
+                    self.text = "ReadCif"
+                    self.disabled = False
+                elif workIdx == 2:
+                    self.visible = False
             case 1:
-                if self.workIdx == 1:
-                    re_text = "Save&Ins"
+                self.pageIdx = 1
+                if workIdx == 1:
+                    self.text = "Save&Go"
+                    self.disabled = False
+                elif workIdx == 2:
+                    self.text = "Save"
+                    self.visible = True
             case 2:
-                if self.workIdx == 1:
-                    re_text = "Stop"
-            case 3:
-                if self.workIdx == 1:
-                    #! MakeMiを実装したら "MakeMi" に変更
-                    re_text = "Next"
-            case 4:
-                if self.workIdx == 1:
-                    re_text = "Stop"
-            case 5:
-                if self.workIdx == 1:
-                    re_text = "Stop"
+                self.pageIdx = 2
+                if workIdx == 1:
+                    self.text = "Stop"
+                    self.disabled = False
+                elif workIdx == 2:
+                    self.visible = False
             case _:
-                pass
-        return re_text
+                self.pageIdx = 99
+                
+
+
 
 class TabContentsContainer(ft.Container):
     def __init__(self, workIdx:int, visible:bool=True):
@@ -120,8 +130,8 @@ class FilePickerBar(ft.Row):
     def __init__(self, filePicker:ft.FilePicker, workIdx:int):
         super().__init__()
 
-        self.fileName:str
-        self.filePath:str
+        self.fileName:str = ""
+        self.filePath:str = ""
         self.data = workIdx
         self.fileType:str
         self.fileLabel:str
@@ -144,7 +154,8 @@ class FilePickerBar(ft.Row):
                 self.fileType = "exe"
                 self.fileLabel = "Builder Path"
             case 1:
-                self.fileType = "cif"
+                #!self.fileType = "cif"
+                self.fileType = "txt"
                 self.fileLabel = "'.cif' File Path"
             case _:
                 self.fileType = "txt"
@@ -164,7 +175,7 @@ class FilePickerBar(ft.Row):
 class Tab_0_FilePathSelect(TabContentsContainer):
     def __init__(self, visible:bool):
         super().__init__(workIdx=0, visible=visible)
-
+        #global fileData
         self.pick1 = FilePickerBar(file_pickers["builder_pick"],0)
         self.pick2 = FilePickerBar(file_pickers["cif_pick"],1)
 
@@ -176,6 +187,43 @@ class Tab_0_FilePathSelect(TabContentsContainer):
             #ft.Text("Output Path"),
             #FilePickerBar(self.filePicker,"Output Path")
         ])
+    
+    def read_file(self)->bool:
+        global fileData
+        fileData.clear()
+        fileData = [["FileData_Output"]]
+        cifPath = self.pick2.filePath
+        if self.pick1.filePath == "":
+            print("filePath not enter.")
+            return False
+        elif cifPath == "":
+            print("cifPath not enter.")
+            return False
+        #print(cifPath)
+        with open(cifPath) as f:
+            i:int = 0
+            for line in f:
+                lineParts = line.strip()
+                match i:
+                    case 0:
+                        if not lineParts == "MakeCi_output":
+                            return False
+                    case 3:
+                        atomInfo = lineParts.split()
+                        spaceGroup = '_'.join(atomInfo[1:])
+                        fileData.append([atomInfo[0],spaceGroup])
+                    case _:
+                        atomInfo = lineParts.split()
+                        fileData.append([])
+                        for info in atomInfo:
+                            fileData[-1].append(info)
+                i += 1
+            print(f"end_line: {i}")
+        
+        for n in fileData:
+            print(n)
+        return True
+
 
 class Tab_1_ReadData(TabContentsContainer):
     def __init__(self, visible:bool):
@@ -238,29 +286,13 @@ class Tab_1_ReadData(TabContentsContainer):
             ]
         )
 
-class ExitConfirmDialog(ft.AlertDialog):
-    def __init__(self):
-        super().__init__()
-        self.modal = True
-        self.title = ft.Text("終了確認")
-        self.content = ft.Text("アプリを終了しますか？")
-        self.actions = [
-            ft.TextButton("Yes", on_click=self.yes_clicked),
-            ft.TextButton("No", on_click=lambda e: self.page.close(self))
-        ]
-        self.actions_alignment = ft.MainAxisAlignment.END
 
-    def yes_clicked(self, e):
-        self.page.close(self)
-        #!ここに終了時のsave動作などを追加
-        self.page.window.destroy()
 
 
 
 class MakeCiApp(ft.Container):
     def __init__(self):
         super().__init__()
-        global file_data
         #self.width = 800
 
         #? パーツのインスタンス生成(宣言)
@@ -275,21 +307,29 @@ class MakeCiApp(ft.Container):
         #self.tabContentsContainer = TabContentsContainer(0)
 
         self.testholder = PlaceHoldeeeer()
+
+        self.tab0 = Tab_0_FilePathSelect(visible=True)
+        self.tab1 = Tab_1_ReadData(visible=False)
         self.tabContents = ft.Stack(
             expand=10,
             controls=[
                 PlaceHoldeeeer(color=ft.Colors.with_opacity(0.2,ft.Colors.random())),
-                Tab_0_FilePathSelect(visible=True),
-                Tab_1_ReadData(visible=False)
+                self.tab0,
+                self.tab1
                 #self.testholder
             ]
         )
+        
+        self.bottomBtn0 = TabBottomButton(buttonClicked=self.bottom_btn_clicked,workIdx=0)
+        self.bottomBtn1 = TabBottomButton(buttonClicked=self.bottom_btn_clicked,workIdx=1)
+        self.bottomBtn2 = TabBottomButton(buttonClicked=self.bottom_btn_clicked,workIdx=2)
         self.bottomButtons = ft.Row(
             expand=1,
             alignment=ft.MainAxisAlignment.END,
             controls=[
-                TabBottomButton(buttonClicked=self.bottom_btn_clicked,pageIdx=0,workIdx=0),
-                TabBottomButton(buttonClicked=self.bottom_btn_clicked,pageIdx=0,workIdx=1)
+                self.bottomBtn2,
+                self.bottomBtn0,
+                self.bottomBtn1
             ]
         )
         self.tabBase = ft.Column(
@@ -326,24 +366,44 @@ class MakeCiApp(ft.Container):
 
 
     def navigate_btn_clicked(self,e):
-        workIdx:int = e.control.workIdx
-        self.tabContents.controls[workIdx+1].visible
+        self.tab_change(e.control.workIdx)
+        
+        #self.update()
+    def tab_change(self, toIdx:int):
+        # ↓親コンテナ(tabContents)のｺﾝﾄﾛｰﾙﾘｽﾄ(ft.stackで配置)的には，
+        # ↓場所固定用のプレースホルダが一番背後(idx=0)に常駐してるのでタブコンテナ内蔵のidx値と1ズレる
+        #self.tabContents.controls[toIdx+1].visible
+        #? ↑廃止matchを使おうとしてできなかった時の残骸か。
         for tab in self.tabContents.controls:
-            if tab.data == workIdx:
+            if tab.data == toIdx:
                 tab.visible = True
             elif tab.data == 99:
                 pass
             else:
                 tab.visible = False
+        btn:TabBottomButton
+        for btn in self.bottomButtons.controls:
+            btn.change_init(toIdx)
+
         self.update()
 
     def bottom_btn_clicked(self,e):
-        pageIDx:int = e.control.pageIdx
+        pageIdx:int = e.control.pageIdx
         workIdx:int = e.control.workIdx
 
         if workIdx == 0:
             self.page.window.close()
 
+        match pageIdx:
+            case 0:
+                if workIdx == 1:
+                    if self.tab0.read_file():
+                        self.tab_change(1)
+            case 1:
+                if workIdx == 1:
+                    print("page1")
+            case _:
+                pass
         self.update()
 
 
@@ -360,7 +420,22 @@ class MakeCiApp(ft.Container):
 
         self.update()
 
+class ExitConfirmDialog(ft.AlertDialog):
+    def __init__(self):
+        super().__init__()
+        self.modal = True
+        self.title = ft.Text("終了確認")
+        self.content = ft.Text("アプリを終了しますか？")
+        self.actions = [
+            ft.TextButton("Yes", on_click=self.yes_clicked),
+            ft.TextButton("No", on_click=lambda e: self.page.close(self))
+        ]
+        self.actions_alignment = ft.MainAxisAlignment.END
 
+    def yes_clicked(self, e):
+        self.page.close(self)
+        #!ここに終了時のsave動作などを追加
+        self.page.window.destroy()
 
 
 
