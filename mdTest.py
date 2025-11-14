@@ -6,9 +6,9 @@ import pprint
 #import re
 
 testPath = "C:/Users/asufa/OneDrive/デスクトップ/1006_1h/MVAuNiUV_autored.cif"
-testPath2 = "D:/Saturn/1031_1/MVAuNi_autored.cif"
+testPath2 = "D:/2_Saturn/1113_3/MVAuNi_autored.cif"
 #testPath2 = "C:/Users/asufa/OneDrive/デスクトップ/test_autored.cif"
-testOutPath = "D:/Saturn/1031_1/outpuuuut.txt"
+testOutPath = "D:/2_Saturn/1113_3/outpuuuut.txt"
 fileName = os.path.splitext(os.path.basename(testPath))[0]
 fileName2 = os.path.splitext(os.path.basename(testPath2))[0]
 
@@ -209,9 +209,9 @@ def LoggingTest2():
     logger.warning("warning_Hello!!!!")
 
 
-
-#addressSort()
-#openTest()
-#makeListTest()
-#LoggingTest()
-LoggingTest2()
+if __name__ == '__main__':
+    #addressSort()
+    #openTest()
+    makeListTest()
+    #LoggingTest()
+    #LoggingTest2()

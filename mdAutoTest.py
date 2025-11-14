@@ -3,7 +3,7 @@ import pyautogui as pag
 import time
 import os
 
-testReadPath = "D:/Saturn/1031_1/outpuuuut.txt"
+testReadPath = "D:/2_Saturn/1113_3/outpuuuut.txt"
 
 atoms_info = [["Read Atoms"]]
 def ReadAtomsInfo():

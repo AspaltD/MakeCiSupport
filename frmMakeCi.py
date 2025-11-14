@@ -238,11 +238,29 @@ class Tab_1_ReadData(TabContentsContainer):
             ]
         )
 
+class ExitConfirmDialog(ft.AlertDialog):
+    def __init__(self):
+        super().__init__()
+        self.modal = True
+        self.title = ft.Text("終了確認")
+        self.content = ft.Text("アプリを終了しますか？")
+        self.actions = [
+            ft.TextButton("Yes", on_click=self.yes_clicked),
+            ft.TextButton("No", on_click=lambda e: self.page.close(self))
+        ]
+        self.actions_alignment = ft.MainAxisAlignment.END
+
+    def yes_clicked(self, e):
+        self.page.close(self)
+        #!ここに終了時のsave動作などを追加
+        self.page.window.destroy()
+
 
 
 class MakeCiApp(ft.Container):
     def __init__(self):
         super().__init__()
+        global file_data
         #self.width = 800
 
         #? パーツのインスタンス生成(宣言)
@@ -270,7 +288,8 @@ class MakeCiApp(ft.Container):
             expand=1,
             alignment=ft.MainAxisAlignment.END,
             controls=[
-                TabBottomButton(buttonClicked=self.button_clicked,pageIdx=0,workIdx=1)
+                TabBottomButton(buttonClicked=self.bottom_btn_clicked,pageIdx=0,workIdx=0),
+                TabBottomButton(buttonClicked=self.bottom_btn_clicked,pageIdx=0,workIdx=1)
             ]
         )
         self.tabBase = ft.Column(
@@ -318,6 +337,16 @@ class MakeCiApp(ft.Container):
                 tab.visible = False
         self.update()
 
+    def bottom_btn_clicked(self,e):
+        pageIDx:int = e.control.pageIdx
+        workIdx:int = e.control.workIdx
+
+        if workIdx == 0:
+            self.page.window.close()
+
+        self.update()
+
+
     def button_clicked(self, e):
         workIdx:int = e.control.workIdx
         print(f"{workIdx}_Button clicked")
@@ -354,7 +383,15 @@ def main(page: ft.Page):
 
     makeCi = MakeCiApp()
 
+    def window_event(e):
+        if e.data == "close":
+            page.open(ExitConfirmDialog())
+            page.update()
+    page.window.prevent_close = True
+    page.window.on_event = window_event
+
     page.add(makeCi)
+    page.window.center()
     page.update()
 
 ft.app(target=main)
