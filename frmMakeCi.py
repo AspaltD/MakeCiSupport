@@ -110,8 +110,7 @@ class TabBottomButton(ft.FilledButton):
                 elif workIdx == 2:
                     self.visible = False
             case _:
-                self.pageIdx = 99
-                
+                self.pageIdx = 99        
 
 
 
@@ -286,6 +285,16 @@ class Tab_1_ReadData(TabContentsContainer):
             ]
         )
 
+    def insert_cells(self):
+        read_row:ft.DataRow
+        for line in fileData:
+            match line[0]:
+                case r'FileData_Output':
+                    print("head")
+                case _:
+                    print("pass")
+                    pass
+        pass
 
 
 
@@ -367,8 +376,8 @@ class MakeCiApp(ft.Container):
 
     def navigate_btn_clicked(self,e):
         self.tab_change(e.control.workIdx)
-        
         #self.update()
+
     def tab_change(self, toIdx:int):
         # ↓親コンテナ(tabContents)のｺﾝﾄﾛｰﾙﾘｽﾄ(ft.stackで配置)的には，
         # ↓場所固定用のプレースホルダが一番背後(idx=0)に常駐してるのでタブコンテナ内蔵のidx値と1ズレる
@@ -398,6 +407,7 @@ class MakeCiApp(ft.Container):
             case 0:
                 if workIdx == 1:
                     if self.tab0.read_file():
+                        self.tab1.insert_cells()
                         self.tab_change(1)
             case 1:
                 if workIdx == 1:
