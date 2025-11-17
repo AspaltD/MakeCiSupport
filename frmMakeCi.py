@@ -1,5 +1,6 @@
 import flet as ft
 import os
+import re
 from typing import Optional, Dict, List
 #import mdAutoTest
 
@@ -289,7 +290,7 @@ class Tab_1_ReadData(TabContentsContainer):
         read_row:ft.DataRow
         for line in fileData:
             match line[0]:
-                case r'FileData_Output':
+                case r'FileData.*':
                     print("head")
                 case _:
                     print("pass")

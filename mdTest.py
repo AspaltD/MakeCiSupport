@@ -1,14 +1,16 @@
 
 import os
 from logging import getLogger, config
+from typing import List
 import json
 import pprint
-#import re
+import re
 
 testPath = "C:/Users/asufa/OneDrive/デスクトップ/1006_1h/MVAuNiUV_autored.cif"
-testPath2 = "D:/2_Saturn/1113_3/MVAuNi_autored.cif"
+testPath2 = "D:/2_Saturn/0829_n/MVAuNi_autored.cif"
 #testPath2 = "C:/Users/asufa/OneDrive/デスクトップ/test_autored.cif"
 testOutPath = "D:/2_Saturn/1113_3/outpuuuut.txt"
+testOutPath2 = "C:/Users/asufa/OneDrive/デスクトップ/1006_1h_def/outpuuuut.txt"
 fileName = os.path.splitext(os.path.basename(testPath))[0]
 fileName2 = os.path.splitext(os.path.basename(testPath2))[0]
 
@@ -208,10 +210,45 @@ def LoggingTest2():
     logger.info("Info_Hello!!!!")
     logger.warning("warning_Hello!!!!")
 
+def re_test():
+    fileData:List[List[str]] = [["FileData_Output"]]
+    #fileData.clear()
+    with open(testOutPath2) as f:
+        i:int = 0
+        for line in f:
+            lineParts = line.strip()
+            match i:
+                case 0:
+                    if not lineParts == "MakeCi_output":
+                        return
+                case 3:
+                    atomInfo = lineParts.split()
+                    spaceGroup = '_'.join(atomInfo[1:])
+                    fileData.append([atomInfo[0],spaceGroup])
+                case _:
+                    atomInfo = lineParts.split()
+                    fileData.append([])
+                    for info in atomInfo:
+                        fileData[-1].append(info)
+            i += 1
+        print(f"end_line: {i}")
+    
+    for n in fileData:
+        print(n)
+    
+    for line in fileData:
+        if re.match('FileData.*',line[0]):
+            print("head")
+        else:
+            print("pass")
+
+    
+
 
 if __name__ == '__main__':
     #addressSort()
     #openTest()
-    makeListTest()
+    #makeListTest()
     #LoggingTest()
     #LoggingTest2()
+    re_test()
