@@ -3,6 +3,7 @@ import os
 import re
 from typing import Optional, Dict, List
 #import mdAutoTest
+import mdAutoTest
 
 #? ファイルピッカーの宣言(コンテンツ内で使いたいのにPageでのOverlay作業が必要なためグローバル変数で宣言)
 #! 改善案募集中：ﾌｧｲﾙﾋﾟｯｶｰの同一の機能を同じコンテナ内で使うにはそれぞれで個別のﾌｧｲﾙﾋﾟｯｶｰが必要っぽい。
@@ -104,10 +105,11 @@ class TabBottomButton(ft.FilledButton):
                 self.pageIdx = 1
                 if workIdx == 1:
                     self.text = "Save&Go"
-                    self.disabled = False
+                    self.disabled = True
                 elif workIdx == 2:
                     self.text = "Save"
                     self.visible = True
+                    self.disabled = True
                 elif workIdx == 3:
                     self.text = "Remove"
                     self.visible = True
@@ -320,6 +322,10 @@ class Tab_1_ReadData(TabContentsContainer):
             scroll=ft.ScrollMode.ALWAYS
         )
 
+        self.saveFilePicker = file_pickers["outpuuuut_save"]
+        self.saveFilePicker.on_result = self.pick_files_result
+        self.outputPath:str
+
 
 
 
@@ -392,8 +398,45 @@ class Tab_1_ReadData(TabContentsContainer):
         #print(e.control.data)
         self.update()
 
+    def save_output_file(self, outputPath:str)->bool:
+        print(outputPath)
+        global fileData
+        fileData.clear()
+        fileData = [["MakeCi_output"]]
+        fileData.append(["fileName",self.dataName.value])
+        fileData.append(["space_group_IT_number",self.spaceGItNum])
+        fileData.append(["space_group_name_H-M_alt",self.spaceGName])
+        fileData.append(["cell_length_a",self.cellLenA.value])
+        fileData.append(["cell_length_b",self.cellLenB.value])
+        fileData.append(["cell_length_c",self.cellLenC.value])
+        fileData.append(["cell_angle_alpha",self.cellAngleA.value])
+        fileData.append(["cell_angle_beta",self.cellAngleB.value])
+        fileData.append(["cell_angle_gamma",self.cellAngleC.value])
+        for row in self.readTable.rows:
+            fileData.append([])
+            for rowParts in row.cells:
+                if rowParts.content.value == "-":
+                    pass
+                else:
+                    fileData[-1].append(rowParts.content.value)
+        outputLines = ["MakeCi_output"]
+        for line in fileData:
+            if line[0] == "MakeCi_output":
+                pass
+            else:
+                outputLines.append('  '.join(line))
+        with open(outputPath, mode='w') as f:
+            f.write('\n'.join(outputLines))
+        self.outputPath = outputPath
+        return True
 
-
+    def pick_files_result(self, e: ft.FilePickerResultEvent):
+        if e.path:
+            if re.match('.*txt',e.path):
+                self.save_output_file(e.path)
+            else:
+                self.save_output_file(e.path+".txt")
+        self.update()
 
 
 class MakeCiApp(ft.Container):
@@ -508,9 +551,18 @@ class MakeCiApp(ft.Container):
                     if self.tab0.read_output_file():
                         self.tab_change(1)
                         self.tab1.insert_cells()
+                        self.tab1.outputPath = self.tab0.pick3.filePath
+                        self.bottomBtn1.disabled = False
+                        self.bottomBtn2.disabled = False
             case 1:
                 if workIdx == 1:
                     print("page1")
+                    if self.tab1.save_output_file(self.tab1.outputPath):
+                        mdAutoTest.ReadAtomsInfo(self.tab1.outputPath)
+                        mdAutoTest.AutoRunSample3()
+
+                elif workIdx == 2:
+                    self.tab1.saveFilePicker.save_file(allowed_extensions=['txt'])
                 elif workIdx == 3:
                     if len(self.tab1.readTable.rows) == 0 or self.tab1.readTable.rows == None:
                         pass
@@ -571,7 +623,8 @@ def main(page: ft.Page):
     file_pickers = {
             "builder_pick": ft.FilePicker(),
             "cif_pick": ft.FilePicker(),
-            "outpuuuut_pick": ft.FilePicker()
+            "outpuuuut_pick": ft.FilePicker(),
+            "outpuuuut_save": ft.FilePicker()
         }
         # ↓ここですべてのﾌｧｲﾙﾋﾟｯｶｰのPageへのOverlayをしてる。
         #  新規にﾌｧｲﾙﾋﾟｯｶｰを追加してもここに手を加える必要はない

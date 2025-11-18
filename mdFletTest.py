@@ -12,7 +12,7 @@ def main(page: ft.Page):
     plot_container = ft.Container(visible=False)
     
     page.add(
-        ft.ElevatedButton("File Select", on_click=lambda _: file_picker.pick_files(allowed_extensions=["txt"])),
+        ft.ElevatedButton("File Select", on_click=lambda _: file_picker.save_file(allowed_extensions=["txt"])),
         status_text,
         plot_container
     )
@@ -24,7 +24,10 @@ def main(page: ft.Page):
     )
 
 def on_dialog_result(e: ft.FilePickerResultEvent):
+    if e.path:
+        print(e.path)
     if e.files:
+        print(e.files)
         print(f"Selected files:{e.files[0].path},{type(e.files[0].path)}")
         print(f"Selected files:{e.files[0].name},{type(e.files[0].name)}")
         print("Selected file or directory:", e.path)

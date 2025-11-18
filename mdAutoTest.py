@@ -6,8 +6,8 @@ import os
 testReadPath = "D:/2_Saturn/1113_3/outpuuuut.txt"
 
 atoms_info = [["Read Atoms"]]
-def ReadAtomsInfo():
-    with open(testReadPath) as f:
+def ReadAtomsInfo(readPath:str):
+    with open(readPath) as f:
         i: int = 0
         print("\n")
         for line in f:
@@ -261,8 +261,8 @@ def AutoRunSample3():
     #crystal_dlg.child_window(title="OK", auto_id="1", control_type="Button").click()
     print("AutoRun completed.")
 
-
-ReadAtomsInfo()
-#AutoRunSample1()
-#AutoRunSample2()
-AutoRunSample3()
+if __name__ == '__main__':
+    ReadAtomsInfo(testReadPath)
+    #AutoRunSample1()
+    #AutoRunSample2()
+    AutoRunSample3()
