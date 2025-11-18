@@ -83,6 +83,8 @@ class TabBottomButton(ft.FilledButton):
             self.text = "Next"
         elif workIdx == 2:
             self.text = "OtherFunc"
+        elif workIdx == 3:
+            self.text = "OtherFunc2"
         else:
             self.text = "--Null--"
             self.disabled = True
@@ -95,6 +97,8 @@ class TabBottomButton(ft.FilledButton):
                     self.disabled = False
                 elif workIdx == 2:
                     self.visible = False
+                elif workIdx == 3:
+                    self.visible = False
             case 1:
                 self.pageIdx = 1
                 if workIdx == 1:
@@ -103,12 +107,17 @@ class TabBottomButton(ft.FilledButton):
                 elif workIdx == 2:
                     self.text = "Save"
                     self.visible = True
+                elif workIdx == 3:
+                    self.text = "Remove"
+                    self.visible = True
             case 2:
                 self.pageIdx = 2
                 if workIdx == 1:
                     self.text = "Stop"
                     self.disabled = False
                 elif workIdx == 2:
+                    self.visible = False
+                elif workIdx == 3:
                     self.visible = False
             case _:
                 self.pageIdx = 99        
@@ -154,9 +163,11 @@ class FilePickerBar(ft.Row):
                 self.fileType = "exe"
                 self.fileLabel = "Builder Path"
             case 1:
-                #!self.fileType = "cif"
-                self.fileType = "txt"
+                self.fileType = "cif"
                 self.fileLabel = "'.cif' File Path"
+            case 2:
+                self.fileType = "txt"
+                self.fileLabel = "Output File Path"
             case _:
                 self.fileType = "txt"
                 self.fileLabel = "404 Path"
@@ -178,29 +189,30 @@ class Tab_0_FilePathSelect(TabContentsContainer):
         #global fileData
         self.pick1 = FilePickerBar(file_pickers["builder_pick"],0)
         self.pick2 = FilePickerBar(file_pickers["cif_pick"],1)
+        self.pick3 = FilePickerBar(file_pickers["outpuuuut_pick"],2)
 
         self.content = ft.Column([
             ft.Text("Builder Path"),
             self.pick1,
             ft.Text("'.cif' File Path"),
             self.pick2,
-            #ft.Text("Output Path"),
-            #FilePickerBar(self.filePicker,"Output Path")
+            ft.Text("Output Path"),
+            self.pick3
         ])
     
-    def read_file(self)->bool:
+    def read_output_file(self)->bool:
         global fileData
         fileData.clear()
         fileData = [["FileData_Output"]]
-        cifPath = self.pick2.filePath
+        outputPath = self.pick3.filePath
         if self.pick1.filePath == "":
             print("filePath not enter.")
+            #!return False
+        elif outputPath == "":
+            print("outputPath not enter.")
             return False
-        elif cifPath == "":
-            print("cifPath not enter.")
-            return False
-        #print(cifPath)
-        with open(cifPath) as f:
+        #print(outputPath)
+        with open(outputPath) as f:
             i:int = 0
             for line in f:
                 lineParts = line.strip()
@@ -229,7 +241,10 @@ class Tab_1_ReadData(TabContentsContainer):
     def __init__(self, visible:bool):
         super().__init__(workIdx=1, visible=visible)
         self.padding = 10
+
         #格子定数用
+        self.spaceGItNum:str
+        self.spaceGName:str
         self.dataName = ft.TextField(expand=1,label="Data_Name",read_only=True)
         self.cellLenA = ft.TextField(expand=1,label="Cell_Length_a",read_only=True)
         self.cellLenB = ft.TextField(expand=1,label="Cell_Length_b",read_only=True)
@@ -263,9 +278,11 @@ class Tab_1_ReadData(TabContentsContainer):
             ]
         )
         #原子座標用
-        
+        self.selectedRows:List[int]
         self.readTable = ft.DataTable(
-            border = ft.border.all(2, ft.Colors.BLACK),
+            border = ft.border.all(1, ft.Colors.BLACK),
+            show_checkbox_column=True,
+            column_spacing=20,
             columns=[
                 ft.DataColumn(ft.Text("Atom")),
                 ft.DataColumn(ft.Text("Idx1"),numeric=True),
@@ -276,26 +293,78 @@ class Tab_1_ReadData(TabContentsContainer):
                 ft.DataColumn(ft.Text("Occ."),numeric=True)
             ]
         )
+        self.readTableBase = ft.Column(
+            expand=2,
+            controls=[
+                self.readTable
+            ],
+            scroll=ft.ScrollMode.ALWAYS
+        )
+
 
 
 
         self.content = ft.Column(
             controls=[
                 self.cellData,
-                PlaceHoldeeeer(2)
+                #PlaceHoldeeeer(2)
+                self.readTableBase
             ]
         )
 
     def insert_cells(self):
         read_row:ft.DataRow
-        for line in fileData:
-            match line[0]:
-                case r'FileData.*':
-                    print("head")
-                case _:
-                    print("pass")
+        i:int = 0
+        n:int = 0
+        for inList in fileData:
+            if i == 0:
+                if inList[0] == 'FileData_Output':
                     pass
-        pass
+                else:
+                    return
+            elif i == 1 and inList[0] == 'fileName':
+                self.dataName.value = inList[1]
+                #continue
+            elif i == 400:
+                return
+            if i >= 2:
+                match inList[0]:
+                    case 'space_group_IT_number':
+                        self.spaceGItNum = inList[1]
+                    case 'space_group_name_H-M_alt':
+                        self.spaceGName = inList[1]
+                    case 'cell_length_a':
+                        self.cellLenA.value = inList[1]
+                    case 'cell_length_b':
+                        self.cellLenB.value = inList[1]
+                    case 'cell_length_c':
+                        self.cellLenC.value = inList[1]
+                    case 'cell_angle_alpha':
+                        self.cellAngleA.value = inList[1]
+                    case 'cell_angle_beta':
+                        self.cellAngleB.value = inList[1]
+                    case 'cell_angle_gamma':
+                        self.cellAngleC.value = inList[1]
+                    case x if re.match('[A-Z][a-z]{0,1}',x):
+                        read_row = ft.DataRow(cells=[],data=n,on_select_changed=self.row_CBox_clicked)
+                        for inData in inList:
+                            read_row.cells.append(ft.DataCell(ft.Text(inData)))
+                        if len(inList) <= 6:
+                            read_row.cells.append(ft.DataCell(content=ft.Text("-")))
+                        self.readTable.rows.append(read_row)
+                        n += 1
+                    case _:
+                        pass
+            i += 1
+
+    def row_CBox_clicked(self,e:ft.ControlEvent):
+        if e.control.selected:
+            e.control.selected = False
+        else:
+            e.control.selected = True
+        print(e.control.data)
+        self.update()
+
 
 
 
@@ -333,10 +402,12 @@ class MakeCiApp(ft.Container):
         self.bottomBtn0 = TabBottomButton(buttonClicked=self.bottom_btn_clicked,workIdx=0)
         self.bottomBtn1 = TabBottomButton(buttonClicked=self.bottom_btn_clicked,workIdx=1)
         self.bottomBtn2 = TabBottomButton(buttonClicked=self.bottom_btn_clicked,workIdx=2)
+        self.bottomBtn3 = TabBottomButton(buttonClicked=self.bottom_btn_clicked,workIdx=3)
         self.bottomButtons = ft.Row(
             expand=1,
             alignment=ft.MainAxisAlignment.END,
             controls=[
+                self.bottomBtn3,
                 self.bottomBtn2,
                 self.bottomBtn0,
                 self.bottomBtn1
@@ -407,9 +478,10 @@ class MakeCiApp(ft.Container):
         match pageIdx:
             case 0:
                 if workIdx == 1:
-                    if self.tab0.read_file():
-                        self.tab1.insert_cells()
+                    if self.tab0.read_output_file():
+                        
                         self.tab_change(1)
+                        self.tab1.insert_cells()
             case 1:
                 if workIdx == 1:
                     print("page1")
@@ -460,7 +532,11 @@ def main(page: ft.Page):
 
     #? ファイルピッカーの追加はここで。(グローバル変数を関数内で編集するには一度宣言が必要っぽい)
     global file_pickers
-    file_pickers = {"builder_pick": ft.FilePicker(), "cif_pick": ft.FilePicker()}
+    file_pickers = {
+            "builder_pick": ft.FilePicker(),
+            "cif_pick": ft.FilePicker(),
+            "outpuuuut_pick": ft.FilePicker()
+        }
         # ↓ここですべてのﾌｧｲﾙﾋﾟｯｶｰのPageへのOverlayをしてる。
         #  新規にﾌｧｲﾙﾋﾟｯｶｰを追加してもここに手を加える必要はない
     for i in file_pickers.keys():

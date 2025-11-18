@@ -217,6 +217,8 @@ def re_test():
         i:int = 0
         for line in f:
             lineParts = line.strip()
+            print(line.rstrip())
+            print(lineParts)
             match i:
                 case 0:
                     if not lineParts == "MakeCi_output":
@@ -236,13 +238,60 @@ def re_test():
     for n in fileData:
         print(n)
     
-    for line in fileData:
-        if re.match('FileData.*',line[0]):
-            print("head")
-        else:
-            print("pass")
+    testData:List[List[str]]=[[]]
+    i = 0
+    for inList in fileData:
+        if i == 0:
+            if inList[0] == 'FileData_Output':
+                print("continue")
+            else:
+                return
+        elif i == 1 and inList[0] == 'fileName':
+            #self.dataName.value = inList[1]
+            print(f"head: {inList}")
+        elif i == 400:
+            return
 
+        if i >= 2:
+            match inList[0]:
+                case 'space_group_IT_number':
+                    #self.spaceGItNum = inList[1]
+                    print(inList)
+                case 'space_group_name_H-M_alt':
+                    #self.spaceGName = inList[1]
+                    print(inList)
+                case 'cell_length_a':
+                    #self.cellLenA.value = inList[1]
+                    print(inList)
+                case 'cell_length_b':
+                    #self.cellLenB.value = inList[1]
+                    print(inList)
+                case 'cell_length_c':
+                    #self.cellLenC.value = inList[1]
+                    print(inList)
+                case 'cell_angle_alpha':
+                    #self.cellAngleA.value = inList[1]
+                    print(inList)
+                case 'cell_angle_beta':
+                    #self.cellAngleB.value = inList[1]
+                    print(inList)
+                case 'cell_angle_gamma':
+                    #self.cellAngleC.value = inList[1]
+                    print(inList)
+                case x if re.match('[A-Z][a-z]{0,1}',x):
+                    read_row:List[str] = []
+                    for inData in inList:
+                        read_row.append(inData)
+                    if len(inList) <= 6:
+                        read_row.append("-")
+
+                    testData.append(read_row)
+                case _:
+                    pass
+        i += 1
     
+    for n in testData:
+        print(n)
 
 
 if __name__ == '__main__':
