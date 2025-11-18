@@ -8,6 +8,7 @@ from typing import Optional, Dict, List
 #! 改善案募集中：ﾌｧｲﾙﾋﾟｯｶｰの同一の機能を同じコンテナ内で使うにはそれぞれで個別のﾌｧｲﾙﾋﾟｯｶｰが必要っぽい。
 file_pickers: Dict[str,ft.FilePicker]
 fileData: List[List[str]] = [["FileData"]]
+settingData: Dict[str,str] = {}
 
 class PlaceHoldeeeer(ft.Placeholder):
     def __init__(self, expand:int=404, color=ft.Colors.random()):
@@ -147,7 +148,7 @@ class FilePickerBar(ft.Row):
         self.filePickeeeer = filePicker
         self.filePickeeeer.on_result = self.pick_files_result
         self.file_init_select()
-        self.textF_path = ft.TextField(expand=9,hint_text=self.fileLabel,dense=True)
+        self.textF_path = ft.TextField(expand=9,hint_text=self.fileLabel,dense=True,on_change=self.value_change)
 
         self.spacing = 0
 
@@ -180,8 +181,21 @@ class FilePickerBar(ft.Row):
             print(f"Selected files:{self.filePath}")
             self.textF_path.value = self.filePath
         self.update()
-
-
+    
+    def value_change(self, e:ft.ControlEvent):
+        line:Optional[str] = e.control.value
+        if line == "" or line is None:
+            self.fileName = ""
+            self.filePath = ""
+        else:
+            if os.path.isfile(line):
+                self.fileName = os.path.splitext(os.path.basename(line))[0]
+                self.filePath = line
+            else:
+                self.fileName = ""
+                self.filePath = ""
+            #print(self.filePath)
+        self.update()
 
 class Tab_0_FilePathSelect(TabContentsContainer):
     def __init__(self, visible:bool):
@@ -199,7 +213,12 @@ class Tab_0_FilePathSelect(TabContentsContainer):
             ft.Text("Output Path"),
             self.pick3
         ])
-    
+
+        if "builder_path" in settingData:
+            self.pick1.textF_path.value = settingData["builder_path"]
+            self.pick1.fileName = os.path.splitext(os.path.basename(settingData["builder_path"]))[0]
+            self.pick1.filePath = settingData["builder_path"]
+
     def read_output_file(self)->bool:
         global fileData
         fileData.clear()
@@ -207,8 +226,8 @@ class Tab_0_FilePathSelect(TabContentsContainer):
         outputPath = self.pick3.filePath
         if self.pick1.filePath == "":
             print("filePath not enter.")
-            #!return False
-        elif outputPath == "":
+            return False
+        if outputPath == "":
             print("outputPath not enter.")
             return False
         #print(outputPath)
@@ -231,7 +250,7 @@ class Tab_0_FilePathSelect(TabContentsContainer):
                             fileData[-1].append(info)
                 i += 1
             print(f"end_line: {i}")
-        
+
         for n in fileData:
             print(n)
         return True
@@ -559,6 +578,23 @@ def main(page: ft.Page):
     for i in file_pickers.keys():
         page.overlay.append(file_pickers.get(i))
         page.update()
+
+    #? 設定ファイルの読み込み
+    global settingData
+    settingFilePath = os.getcwd()+os.sep+"makeci_setting.txt"
+    if os.path.isfile(settingFilePath):
+        print("True")
+        with open(settingFilePath) as f:
+            for line in f:
+                lineParts = line.rstrip().split(sep=';')
+                if len(lineParts) <= 1:
+                    continue
+                elif len(lineParts) >= 3:
+                    lineParts[1] = ';'.join(lineParts[1:])
+                settingData[lineParts[0]] = lineParts[1]
+        print(settingData)
+    else:
+        print("False")
 
     makeCi = MakeCiApp()
 
