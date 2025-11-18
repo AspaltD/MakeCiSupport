@@ -278,7 +278,7 @@ class Tab_1_ReadData(TabContentsContainer):
             ]
         )
         #原子座標用
-        self.selectedRows:List[int]
+        self.selectedRows:List[int] = []
         self.readTable = ft.DataTable(
             border = ft.border.all(1, ft.Colors.BLACK),
             show_checkbox_column=True,
@@ -313,6 +313,7 @@ class Tab_1_ReadData(TabContentsContainer):
         )
 
     def insert_cells(self):
+        #* read_row -> data = インデックス番号
         read_row:ft.DataRow
         i:int = 0
         n:int = 0
@@ -360,9 +361,16 @@ class Tab_1_ReadData(TabContentsContainer):
     def row_CBox_clicked(self,e:ft.ControlEvent):
         if e.control.selected:
             e.control.selected = False
+            for idx in self.selectedRows:
+                if idx == e.control.data:
+                    self.selectedRows.remove(idx)
+                else:
+                    pass
         else:
             e.control.selected = True
-        print(e.control.data)
+            self.selectedRows.append(e.control.data)
+        print(self.selectedRows)
+        #print(e.control.data)
         self.update()
 
 
@@ -479,17 +487,26 @@ class MakeCiApp(ft.Container):
             case 0:
                 if workIdx == 1:
                     if self.tab0.read_output_file():
-                        
                         self.tab_change(1)
                         self.tab1.insert_cells()
             case 1:
                 if workIdx == 1:
                     print("page1")
-            case _:
+                elif workIdx == 3:
+                    if len(self.tab1.readTable.rows) == 0 or self.tab1.readTable.rows == None:
+                        pass
+                    else:
+                        for delIdx in self.tab1.selectedRows:
+                            for roooow in self.tab1.readTable.rows:
+                                if roooow.data == delIdx:
+                                    #! 一回分の戻る操作を可能にしたい
+                                    self.tab1.readTable.rows.remove(roooow)
+                        self.tab1.selectedRows.clear()
+            case x:
                 pass
         self.update()
 
-
+    #! ↓テスト用ボタンの機能。削除予定
     def button_clicked(self, e):
         workIdx:int = e.control.workIdx
         print(f"{workIdx}_Button clicked")
