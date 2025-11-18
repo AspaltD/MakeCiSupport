@@ -123,7 +123,7 @@ class TabBottomButton(ft.FilledButton):
                 elif workIdx == 3:
                     self.visible = False
             case _:
-                self.pageIdx = 99        
+                self.pageIdx = 99
 
 
 
@@ -221,11 +221,109 @@ class Tab_0_FilePathSelect(TabContentsContainer):
             self.pick1.fileName = os.path.splitext(os.path.basename(settingData["builder_path"]))[0]
             self.pick1.filePath = settingData["builder_path"]
 
-    def read_output_file(self)->bool:
+    def read_cif_file(self)->bool:
+        global fileData
+        fileData.clear()
+        fileData = [["FileData_Read"]]
+        cifPath = self.pick2.filePath
+        outputPath = os.getcwd() + os.sep + "outpuuuut.txt"
+        self.pick3.filePath = outputPath
+        if self.pick1.filePath == "":
+            print("BuilderPath not enter.")
+            return False
+        if cifPath == "":
+            print(".cif_filePath not enter.")
+            return False
+        i:int = 0
+        atoms:bool = False
+        atomIdx:int = 0
+        atomSecIdx:int = 0
+        with open(self.pick2.filePath) as f:
+            for line in f:
+                match i:
+                    case 0:
+                        if os.path.splitext(os.path.basename(cifPath))[0].lower() in line:
+                            fileData.append(["fileName", line.strip()])
+                        else:
+                            print("file is not compleat by Olex2-1.5")
+                            return False
+                    case 400:
+                        print("readline is over.(400 lines)")
+                        return False
+                    case _:
+                        if "_space_group_IT_number" in line:
+                            spaceNumStock = line.strip().split()
+                            fileData.append([spaceNumStock[0][1:],spaceNumStock[1]])
+                        elif "_space_group_name_H-M_alt" in line:
+                            spaceGStock = line.strip().split()
+                            fileData.append([spaceGStock[0][1:],line.strip().split("'")[1]])
+                        elif "_cell_length_" in line:
+                            lengthStock = line.strip().split()
+                            fileData.append([lengthStock[0][1:],lengthStock[1].split('(')[0]])
+                            #print(line.strip().split())
+                        elif "_cell_angle_" in line:
+                            angleStock = line.strip().split()
+                            fileData.append([angleStock[0][1:],angleStock[1].split('(')[0]])
+                            #print(line.strip())
+                        elif "_atom_site_disorder_group" in line:
+                            atoms = True
+                            atomIdx = 1
+                            atomSecIdx = 1
+                            continue
+                        elif "loop_" in line:
+                            if atoms:
+                                print("read finished")
+                                print("i: " + str(i))
+                                break
+                            else:
+                                atoms = False
+                                continue
+                        else:
+                            pass
+                        if atoms:
+                            atomsStock = line.strip().split()
+                            #print(atomsStock)
+                            if len(atomsStock) < 5:
+                                continue
+                            atomName = atomsStock[1]
+
+                            if atomIdx == 1 and atomSecIdx == 1:
+                                fileData.append([atomName,str(atomIdx),str(atomSecIdx),atomsStock[2].split('(')[0],atomsStock[3].split('(')[0],atomsStock[4].split('(')[0]])
+                                if not atomsStock[7] == "1":
+                                    fileData[-1].append(atomsStock[7].split('(')[0])
+                                atomSecIdx = 2
+                            elif atomName == fileData[-1][0]:
+                                atomIdx = int(fileData[-1][1])
+                                atomSecIdx = int(fileData[-1][2]) + 1
+                                fileData.append([atomName,str(atomIdx),str(atomSecIdx),atomsStock[2].split('(')[0],atomsStock[3].split('(')[0],atomsStock[4].split('(')[0]])
+                                if not atomsStock[7] == "1":
+                                    fileData[-1].append(atomsStock[7].split('(')[0])
+                            else:
+                                atomIdx = int(fileData[-1][1]) + 1
+                                atomSecIdx = 1
+                                fileData.append([atomName,str(atomIdx),str(atomSecIdx),atomsStock[2].split('(')[0],atomsStock[3].split('(')[0],atomsStock[4].split('(')[0]])
+                                if not atomsStock[7] == "1":
+                                    fileData[-1].append(atomsStock[7].split('(')[0])
+                i += 1
+        outputLines = ["MakeCi_output"]
+        for line in fileData:
+            if line[0] == "FileData_Read":
+                pass
+            else:
+                outputLines.append('  '.join(line))
+        with open(outputPath, mode='w') as f:
+            f.write('\n'.join(outputLines))
+        return True
+
+
+    def read_output_file(self, outputFilePath:str="")->bool:
         global fileData
         fileData.clear()
         fileData = [["FileData_Output"]]
-        outputPath = self.pick3.filePath
+        if outputFilePath == "":
+            outputPath = self.pick3.filePath
+        else:
+            outputPath = outputFilePath
         if self.pick1.filePath == "":
             print("filePath not enter.")
             return False
@@ -344,7 +442,7 @@ class Tab_1_ReadData(TabContentsContainer):
         n:int = 0
         for inList in fileData:
             if i == 0:
-                if inList[0] == 'FileData_Output':
+                if re.match('FileData_.*',inList[0]):
                     pass
                 else:
                     return
@@ -548,7 +646,12 @@ class MakeCiApp(ft.Container):
         match pageIdx:
             case 0:
                 if workIdx == 1:
-                    if self.tab0.read_output_file():
+                    runRes:bool = False
+                    if self.tab0.pick2.filePath != "":
+                        runRes = self.tab0.read_cif_file()
+                    elif self.tab0.pick3.filePath != "":
+                        runRes = self.tab0.read_output_file()
+                    if runRes:
                         self.tab_change(1)
                         self.tab1.insert_cells()
                         self.tab1.outputPath = self.tab0.pick3.filePath
