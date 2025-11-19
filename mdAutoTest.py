@@ -2,11 +2,15 @@ from pywinauto.application import Application
 import pyautogui as pag
 import time
 import os
+from typing import List
 
 testReadPath = "D:/2_Saturn/1113_3/outpuuuut.txt"
 
-atoms_info = [["Read Atoms"]]
+atoms_info:List[List[str]] = [["Read Atoms"]]
 def ReadAtomsInfo(readPath:str):
+    global atoms_info
+    atoms_info.clear()
+    atoms_info = [["Read Atoms"]]
     with open(readPath) as f:
         i: int = 0
         print("\n")
