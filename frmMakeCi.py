@@ -437,6 +437,7 @@ class Tab_1_ReadData(TabContentsContainer):
 
     def insert_cells(self):
         #* read_row -> data = インデックス番号
+        self.readTable.rows.clear()
         read_row:ft.DataRow
         i:int = 0
         n:int = 0
