@@ -7,64 +7,72 @@ import mdAutoTest
 
 #? ファイルピッカーの宣言(コンテンツ内で使いたいのにPageでのOverlay作業が必要なためグローバル変数で宣言)
 #! 改善案募集中：ﾌｧｲﾙﾋﾟｯｶｰの同一の機能を同じコンテナ内で使うにはそれぞれで個別のﾌｧｲﾙﾋﾟｯｶｰが必要っぽい。
-file_pickers: Dict[str,ft.FilePicker]
-fileData: List[List[str]] = [["FileData"]]
-settingData: Dict[str,str] = {}
+filePickers: Dict[str,ft.FilePicker]        #*ファイルピッカーの辞書
+fileData: List[List[str]] = [["FileData"]]  #*読み書きするファイルの中身を一時保持するための二次元リスト
+settingData: Dict[str,str] = {}             #*Builderのパスの保存，バージョン情報などの保持情報を入れる辞書
 
 class PlaceHoldeeeer(ft.Placeholder):
-    def __init__(self, expand:int=404, color=ft.Colors.random()):
+    def __init__(self, expand:Optional[int]=None, color:Optional[ft.Colors]=ft.Colors.random()):
         super().__init__()
-        self.data = 99
-        if expand == 404:
+        self.data = 99      #* タブのインデックス番号に当たる。後で処理の回避用に使用。
+        if expand is None:
             self.expand = True
         else:
             self.expand = expand
         self.color = color
-class NaviButton(ft.FilledButton):
-    def __init__(self, workIdx:int, button_clicked, height=40):
+class NavButton(ft.FilledButton):
+    def __init__(self, workIdx:int, button_clicked:ft.ControlEvent):
         super().__init__()
-        #self.expand = expand
         self.width = 150
-        self.height = height
+        self.height = 40
         self.on_click = button_clicked
         self.workIdx = workIdx
-        self.text = self.select_text(workIdx)
+        self.select_text()
 
-    def select_text(self, idx:int):
-        b_text: str
-        match idx:
+    def select_text(self):
+        match self.workIdx:
             case 0:
-                b_text = "動作設定"
+                self.text = "動作設定"
             case 1:
-                b_text = "読取結果"
+                self.text = "読取結果"
             case 2:
-                b_text = "Builderログ"
+                self.text = "Builderログ"
             case 3:
-                b_text = "Builder動作完了"
+                self.text = "Builder動作完了"
             case _:
-                b_text = "Null Button"
-        return b_text
+                self.text = "Null Button"
 
-class NaviDownMark(ft.Text):
+class NavDownMark(ft.Text):
     def __init__(self):
         super().__init__()
         self.width = 180
         self.text_align = ft.TextAlign.CENTER
         self.value = "▼"
 
-class NaviBar(ft.Column):
-    def __init__(self):
+class TabChangeBar(ft.Container):
+    def __init__(self, navBtnClicked:ft.ControlEvent):
         super().__init__()
-        self.width = 180
-        self.height = 520
-        self.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-        self.spacing = 0
-        self.expand_loose = True
+        self.border = ft.border.all(1,ft.Colors.BLACK)
+        self.padding = 10
         self.expand = 1
-        #self.tight = False
-        #self.alignment = ft.MainAxisAlignment.CENTER
-        #self.expand = True
+        self.bgcolor = ft.Colors.GREY_300
 
+        self.tabContents = ft.Column(
+            height=520,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=0,
+            expand_loose=True,
+            controls=[
+                NavButton(0, navBtnClicked),
+                NavDownMark(),
+                NavButton(1, navBtnClicked),
+                NavDownMark(),
+                NavButton(2, navBtnClicked),
+                NavDownMark(),
+                NavButton(3, navBtnClicked)
+            ]
+        )
+        self.content = self.tabContents
 class TabBottomButton(ft.FilledButton):
     def __init__(self,buttonClicked, workIdx:int=0):
         super().__init__()
@@ -203,9 +211,9 @@ class Tab_0_FilePathSelect(TabContentsContainer):
     def __init__(self, visible:bool):
         super().__init__(workIdx=0, visible=visible)
         #global fileData
-        self.pick1 = FilePickerBar(file_pickers["builder_pick"],0)
-        self.pick2 = FilePickerBar(file_pickers["cif_pick"],1)
-        self.pick3 = FilePickerBar(file_pickers["outpuuuut_pick"],2)
+        self.pick1 = FilePickerBar(filePickers["builder_pick"],0)
+        self.pick2 = FilePickerBar(filePickers["cif_pick"],1)
+        self.pick3 = FilePickerBar(filePickers["outpuuuut_pick"],2)
 
         self.content = ft.Column([
             ft.Text("Builder Path"),
@@ -420,7 +428,7 @@ class Tab_1_ReadData(TabContentsContainer):
             scroll=ft.ScrollMode.ALWAYS
         )
 
-        self.saveFilePicker = file_pickers["outpuuuut_save"]
+        self.saveFilePicker = filePickers["outpuuuut_save"]
         self.saveFilePicker.on_result = self.pick_files_result
         self.outputPath:str
 
@@ -544,15 +552,7 @@ class MakeCiApp(ft.Container):
         #self.width = 800
 
         #? パーツのインスタンス生成(宣言)
-        self.naviBar = NaviBar()
-        self.naviBarC = ft.Container(
-            border = ft.border.all(1,ft.Colors.BLACK),
-            padding = 10,
-            expand = 1,
-            bgcolor = ft.Colors.GREY_300,
-            content = self.naviBar
-        )
-        #self.tabContentsContainer = TabContentsContainer(0)
+        self.TabChangeBar = TabChangeBar(navBtnClicked=self.Nav_btn_clicked)
 
         self.testholder = PlaceHoldeeeer()
 
@@ -596,26 +596,17 @@ class MakeCiApp(ft.Container):
 
 
         #? パーツの個別設定
-        self.naviBar.controls = [
-            NaviButton(0, self.navigate_btn_clicked),
-            NaviDownMark(),
-            NaviButton(1, self.navigate_btn_clicked),
-            NaviDownMark(),
-            NaviButton(2, self.navigate_btn_clicked),
-            NaviDownMark(),
-            NaviButton(3, self.navigate_btn_clicked),
-        ]
 
         #? パーツを配置
         self.content = ft.Row(
             controls=[
-                self.naviBarC,
+                self.TabChangeBar,
                 self.tabBase
             ]
         )
 
 
-    def navigate_btn_clicked(self,e):
+    def Nav_btn_clicked(self,e):
         self.tab_change(e.control.workIdx)
         #self.update()
 
@@ -723,8 +714,8 @@ def main(page: ft.Page):
     page.update()
 
     #? ファイルピッカーの追加はここで。(グローバル変数を関数内で編集するには一度宣言が必要っぽい)
-    global file_pickers
-    file_pickers = {
+    global filePickers
+    filePickers = {
             "builder_pick": ft.FilePicker(),
             "cif_pick": ft.FilePicker(),
             "outpuuuut_pick": ft.FilePicker(),
@@ -732,8 +723,8 @@ def main(page: ft.Page):
         }
         # ↓ここですべてのﾌｧｲﾙﾋﾟｯｶｰのPageへのOverlayをしてる。
         #  新規にﾌｧｲﾙﾋﾟｯｶｰを追加してもここに手を加える必要はない
-    for i in file_pickers.keys():
-        page.overlay.append(file_pickers.get(i))
+    for i in filePickers.keys():
+        page.overlay.append(filePickers.get(i))
         page.update()
 
     #? 設定ファイルの読み込み
