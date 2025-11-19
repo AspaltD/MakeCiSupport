@@ -11,6 +11,7 @@ filePickers: Dict[str,ft.FilePicker]        #*ファイルピッカーの辞書
 fileData: List[List[str]] = [["FileData"]]  #*読み書きするファイルの中身を一時保持するための二次元リスト
 settingData: Dict[str,str] = {}             #*Builderのパスの保存，バージョン情報などの保持情報を入れる辞書
 
+#* アプリ各所でレイアウト維持のために使用するプレースホルダ。デフォルトの色指定をランダムで設定してる。
 class PlaceHoldeeeer(ft.Placeholder):
     def __init__(self, expand:Optional[int]=None, color:Optional[ft.Colors]=ft.Colors.random()):
         super().__init__()
@@ -20,6 +21,8 @@ class PlaceHoldeeeer(ft.Placeholder):
         else:
             self.expand = expand
         self.color = color
+
+#* TabChangeBarクラスで使用するタブ切り替え用のボタン
 class NavButton(ft.FilledButton):
     def __init__(self, workIdx:int, button_clicked:ft.ControlEvent):
         super().__init__()
@@ -42,6 +45,7 @@ class NavButton(ft.FilledButton):
             case _:
                 self.text = "Null Button"
 
+#*下のTabChangeBarクラスでボタンの間に挟む「▼」文字。繰り返し構造のためクラス化してる。
 class NavDownMark(ft.Text):
     def __init__(self):
         super().__init__()
@@ -49,6 +53,7 @@ class NavDownMark(ft.Text):
         self.text_align = ft.TextAlign.CENTER
         self.value = "▼"
 
+#*ウィンドウ左側のタブ切り替え用のボタンを配置したコンテナ
 class TabChangeBar(ft.Container):
     def __init__(self, navBtnClicked:ft.ControlEvent):
         super().__init__()
@@ -73,6 +78,7 @@ class TabChangeBar(ft.Container):
             ]
         )
         self.content = self.tabContents
+
 class TabBottomButton(ft.FilledButton):
     def __init__(self,buttonClicked, workIdx:int=0):
         super().__init__()
