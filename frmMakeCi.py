@@ -80,64 +80,67 @@ class TabChangeBar(ft.Container):
         self.content = self.tabContents
 
 class TabBottomButton(ft.FilledButton):
-    def __init__(self,buttonClicked, workIdx:int=0):
+    def __init__(self,buttonClicked:ft.ControlEvent, workIdx:int=0):
         super().__init__()
-        self.pageIdx = 0
-        self.workIdx = workIdx
+        #? ボトムボタンたちはwindowに固定で，タブの遷移時に文字と表示・非表示等のプロパティを変える。
+        self.pageIdx:int        #* タブのページ番号。初期画面がTab0で固定なので初期設定は0
+        self.workIdx = workIdx  #* ボタンの動作を示す番号
         self.on_click = buttonClicked
         self.width = 120
+        self.select_defText()
         self.change_init(0)
 
-    #? workIdx = 0:Exit, 1:Next
+    #? workIdx = 0:Exit, 1:Next, 2:OtherFunc, 3:OtherFunc2
+    def select_defText(self):
+        match self.workIdx:
+            case 0:
+                self.text = "ExitApp"
+            case 1:
+                self.text = "Next"
+            case 2:
+                self.text = "OtherFunc"
+            case 3:
+                self.text = "OtherFunc2"
+            case _:
+                self.text = "--Null--"
+                self.disabled = True
 
     def change_init(self, toPageIdx:int):
-        workIdx = self.workIdx
-        if workIdx == 0:
-            self.text = "ExitApp"
-            return
-        elif workIdx == 1:
-            self.text = "Next"
-        elif workIdx == 2:
-            self.text = "OtherFunc"
-        elif workIdx == 3:
-            self.text = "OtherFunc2"
-        else:
-            self.text = "--Null--"
-            self.disabled = True
-        
-        match toPageIdx:
+        wIdx = self.workIdx
+        self.pageIdx = toPageIdx
+        match self.pageIdx:
             case 0:
-                self.pageIdx = 0
-                if workIdx == 1:
+                if wIdx == 1:
                     self.text = "ReadCif"
                     self.disabled = False
-                elif workIdx == 2:
+                elif wIdx == 2:
                     self.visible = False
-                elif workIdx == 3:
+                elif wIdx == 3:
                     self.visible = False
             case 1:
-                self.pageIdx = 1
-                if workIdx == 1:
+                if wIdx == 1:
                     self.text = "Save&Go"
                     self.disabled = True
-                elif workIdx == 2:
+                elif wIdx == 2:
                     self.text = "Save"
                     self.visible = True
                     self.disabled = True
-                elif workIdx == 3:
+                elif wIdx == 3:
                     self.text = "Remove"
                     self.visible = True
             case 2:
-                self.pageIdx = 2
-                if workIdx == 1:
+                if wIdx == 1:
                     self.text = "Stop"
                     self.disabled = False
-                elif workIdx == 2:
+                elif wIdx == 2:
                     self.visible = False
-                elif workIdx == 3:
+                elif wIdx == 3:
                     self.visible = False
             case _:
-                self.pageIdx = 99
+                if wIdx != 0:
+                    self.text = "--404--"
+                    self.disabled = True
+                    self.visible = True
 
 
 
