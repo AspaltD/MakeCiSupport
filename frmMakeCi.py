@@ -79,6 +79,8 @@ class TabChangeBar(ft.Container):
         )
         self.content = self.tabContents
 
+#*タブ下部に配置される，タブの個別の機能実装用のボタン。
+#* このボタンたちの配置はタブから独立していて，本体コンテナの直接の管理下。
 class TabBottomButton(ft.FilledButton):
     def __init__(self,buttonClicked:ft.ControlEvent, workIdx:int=0):
         super().__init__()
@@ -142,8 +144,7 @@ class TabBottomButton(ft.FilledButton):
                     self.disabled = True
                     self.visible = True
 
-
-
+#* 以降に作成する各種タブコンテナの抽象クラスに当たるもの。
 class TabContentsContainer(ft.Container):
     def __init__(self, workIdx:int, visible:bool=True):
         super().__init__()
@@ -151,16 +152,14 @@ class TabContentsContainer(ft.Container):
         self.visible = visible
         self.expand = 10
         self.padding = 10
-        #self.height = 540
-        self.bgcolor = ft.Colors.LIGHT_BLUE_100
-        #self.border = ft.border.all(1,ft.Colors.BLACK)
+        self.bgcolor = ft.Colors.GREY_900
 
 class FilePickerBar(ft.Row):
     def __init__(self, filePicker:ft.FilePicker, workIdx:int):
         super().__init__()
-
         self.fileName:str = ""
         self.filePath:str = ""
+        self.workIdx = workIdx
         self.data = workIdx
         self.fileType:str
         self.fileLabel:str
