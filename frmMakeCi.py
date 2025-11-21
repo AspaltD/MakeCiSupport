@@ -227,7 +227,7 @@ class FilePickerBar(ft.Row):
         self.path_changed(e.control.value)
         self.update()
 
-
+#* タブ0。ビルダー，cif，outputファイルのパスを入力する画面。初期画面。
 class Tab_0_FilePathSelect(TabContentsContainer):
     def __init__(self):
         super().__init__(workIdx=0, visible=True)
@@ -247,12 +247,12 @@ class Tab_0_FilePathSelect(TabContentsContainer):
         if "builder_path" in settingData:
             self.pick1.path_changed(settingData["builder_path"])
 
+    #* cifファイル読み取り用。必要なデータのみ抽出する。fileDataのヘッダーは"FileData_CIF"
     def read_cif_file(self)->bool:
         global fileData
         fileData.clear()
         fileData = [["FileData_CIF"]]
         cifPath = self.pick2.filePath
-        outputPath = os.getcwd() + os.sep + "outpuuuut.txt"
         if self.pick1.filePath == "":
             print("BuilderPath not enter.")
             return False
@@ -281,13 +281,14 @@ class Tab_0_FilePathSelect(TabContentsContainer):
                         if "_space_group_IT_number" in line:
                             fileData.append(["space_group_IT_number", line.split()[1]])
                         elif "_space_group_name_H-M_alt" in line:
-                            fileData.append(["space_group_name_H-M_alt", line.split("'")[1]])
+                            stock = line.split("'")
+                            fileData.append(["space_group_name_H-M_alt", '_'.join(stock[1].split(' '))])
                         elif "_cell_length_" in line:
-                            Stock = line.split()
-                            fileData.append([Stock[0][1:], Stock[1].split('(')[0]])
+                            stock = line.split()
+                            fileData.append([stock[0][1:], stock[1].split('(')[0]])
                         elif "_cell_angle_" in line:
-                            Stock = line.split()
-                            fileData.append([Stock[0][1:], Stock[1].split('(')[0]])
+                            stock = line.split()
+                            fileData.append([stock[0][1:], stock[1].split('(')[0]])
                         elif "_cell_volume" in line:
                             fileData.append(["cell_volume", line.split()[1].split('(')[0]])
                         elif "_atom_site_disorder_group" in line:
@@ -326,55 +327,59 @@ class Tab_0_FilePathSelect(TabContentsContainer):
                             if not atomParts[7] == "1":
                                 fileData[-1].append(atomParts[7].split('(')[0])
 
-        #? 仮出力ファイルで出力
-        outputLines = ["MakeCi_output"]
-        for line in fileData:
-            if line[0] == "FileData_CIF":
-                pass
-            else:
-                outputLines.append('  '.join(line))
-        with open(outputPath, mode='w') as f:
-            f.write('\n'.join(outputLines))
+        #? 仮出力ファイルに保存
+        self.save_outpuuuut_file()
         return True
 
-
-    def read_output_file(self, outputFilePath:str="")->bool:
+    #* outputファイル読み取り用。データは整ってるはずなので素直に読み込んでfileDataに入れるだけ。ヘッダーは"FileData_Output"
+    def read_output_file(self)->bool:
         global fileData
         fileData.clear()
         fileData = [["FileData_Output"]]
-        if outputFilePath == "":
-            outputPath = self.pick3.filePath
-        else:
-            outputPath = outputFilePath
+        outputPath = self.pick3.filePath
         if self.pick1.filePath == "":
             print("filePath not enter.")
             return False
         if outputPath == "":
             print("outputPath not enter.")
             return False
-        #print(outputPath)
+        i:int = -1
         with open(outputPath) as f:
-            i:int = 0
-            for line in f:
-                lineParts = line.strip()
+            for lineS in f:
+                i += 1
+                line = lineS.strip()
                 match i:
                     case 0:
-                        if not lineParts == "MakeCi_output":
+                        if not line == "MakeCi_output":
+                            print("This txt_file is not output_file.")
                             return False
-                    case 3:
-                        atomInfo = lineParts.split()
-                        spaceGroup = '_'.join(atomInfo[1:])
-                        fileData.append([atomInfo[0],spaceGroup])
+                    case 200:
+                        print("readline is over.(200)")
+                        return False
                     case _:
-                        atomInfo = lineParts.split()
+                        lineP = line.split()
                         fileData.append([])
-                        for info in atomInfo:
+                        for info in lineP:
                             fileData[-1].append(info)
-                i += 1
             print(f"end_line: {i}")
 
         for n in fileData:
             print(n)
+        #? 仮出力ファイルに保存
+        self.save_outpuuuut_file()
+        return True
+
+    #* 直近の場所に仮出力ファイル(outpuuuut.txt)を保存。どちらの読み込み方でも一時保存はする。
+    def save_outpuuuut_file(self)->bool:
+        outputPath = os.getcwd() + os.sep + "outpuuuut.txt"
+        outputLines:List[str] = ["MakeCi_output"]
+        for line in fileData:
+            if re.match('FileData_.*', line[0]):
+                pass
+            else:
+                outputLines.append('\t'.join(line))
+        with open(outputPath, mode='w') as f:
+            f.write('\n'.join(outputLines))
         return True
 
 
@@ -519,8 +524,14 @@ class Tab_1_ReadData(TabContentsContainer):
         #print(e.control.data)
         self.update()
 
-    def save_output_file(self, outputPath:str)->bool:
-        print(outputPath)
+    def save_output_file(self, outputFilePath:str)->bool:
+        outputPath:str
+        outpuuuutPath:str = os.getcwd() + os.sep + "outpuuuut.txt"
+        if os.path.isfile(outputFilePath):
+            outputPath = outputFilePath
+        else:
+            return False
+        print(f"outputPath: {outputPath}")
         global fileData
         fileData.clear()
         fileData = [["MakeCi_output"]]
