@@ -28,10 +28,11 @@ class NavButton(ft.FilledButton):
         super().__init__()
         self.width = 150
         self.height = 40
-        self.on_click = button_clicked
-        self.workIdx = workIdx
-        self.select_text()
+        self.on_click = button_clicked  #* ボタンの動作。機能の性質的に本体コンテナからの指定を想定。
+        self.workIdx = workIdx      #* 該当ｲﾝｽﾀﾝｽがどのタブへの移行をするためのものかを示す。タブのｲﾝﾃﾞｯｸｽ番号に同義。
+        self.select_text()          #* workIdxをもとにラベルの初期設定。
 
+    #* 設定されたworkIdxをもとにラベルの設定。機能の設定ではない。
     def select_text(self):
         match self.workIdx:
             case 0:
@@ -87,12 +88,13 @@ class TabBottomButton(ft.FilledButton):
         #? ボトムボタンたちはwindowに固定で，タブの遷移時に文字と表示・非表示等のプロパティを変える。
         self.pageIdx:int        #* タブのページ番号。初期画面がTab0で固定なので初期設定は0
         self.workIdx = workIdx  #* ボタンの動作を示す番号
-        self.on_click = buttonClicked
+        self.on_click = buttonClicked   #* ボタンの動作。本体コンテナから指定することを想定してる
         self.width = 120
-        self.select_defText()
-        self.change_init(0)
+        self.select_defText()   #* ボタンの初期テキストの設定。タブ変更とともに変わるので本当にエラーはじき用のセットアップ関数。
+        self.change_init(0)     #* 初期画面(Tab0)用にボタンの各種プロパティを変更
 
     #? workIdx = 0:Exit, 1:Next, 2:OtherFunc, 3:OtherFunc2
+    #* workIdxに合わせてボタンの初期テキストを選択。主にエラー回避のための関数。
     def select_defText(self):
         match self.workIdx:
             case 0:
@@ -107,6 +109,8 @@ class TabBottomButton(ft.FilledButton):
                 self.text = "--Null--"
                 self.disabled = True
 
+    #* 初期設定以降に動的に各種プロパティを変更するための関数。移行するタブのｲﾝﾃﾞｯｸｽ番号を引数に指定する。
+    #* 外部(主に本体)からの呼び出しを想定。
     def change_init(self, toPageIdx:int):
         wIdx = self.workIdx
         self.pageIdx = toPageIdx
@@ -146,54 +150,62 @@ class TabBottomButton(ft.FilledButton):
 
 #* 以降に作成する各種タブコンテナの抽象クラスに当たるもの。
 class TabContentsContainer(ft.Container):
-    def __init__(self, workIdx:int, visible:bool=True):
+    def __init__(self, workIdx:int, visible:bool):
         super().__init__()
-        self.data = workIdx
-        self.visible = visible
+        self.data = workIdx     #*タブのインデックス番号に当たる。
+        self.visible = visible  #*初期画面はTab0のはずなので，基本最初はFalse
         self.expand = 10
         self.padding = 10
         self.bgcolor = ft.Colors.GREY_50
 
-#* 主にタブ0に配置しているファイル選択用のﾃｷｽﾄﾌｨｰﾙﾄﾞとﾎﾞﾀﾝのペア。直接入力にも対応してる(はず)
+#* 主にタブ0に配置しているファイル選択用のﾃｷｽﾄﾌｨｰﾙﾄﾞとﾎﾞﾀﾝのペア。直接入力にも対応。
 class FilePickerBar(ft.Row):
-    def __init__(self, filePicker:ft.FilePicker, workIdx:int):
+    def __init__(self, workIdx:int):
         super().__init__()
-        self.fileName:str = ""
-        self.filePath:str = ""
-        self.workIdx = workIdx
-        self.fileType:str
-        self.filePickeeeer = filePicker
-        self.filePickeeeer.on_result = self.pick_files_result
+        self.fileName:str = ""      #* 指定されたファイルの名前
+        self.filePath:str = ""      #* 指定されたファイルの絶対パス
+        self.workIdx = workIdx      #* ﾌｧｲﾙﾋﾟｯｶｰﾊﾞｰのｲﾝﾃﾞｯｸｽ番号に当たる。これをもとにラベルや許容する拡張子が選択される
+        self.fileType:str           #* 許容する拡張子。現在は一つのｲﾝｽﾀﾝｽにつき一つの拡張子のみ指定できる
+        self.filePickeeeer:ft.FilePicker
         self.txtfPath = ft.TextField(expand=9,dense=True,on_blur=self.txtf_value_change)
+        #* ↓この関数でラベル等の初期設定をしてる
         self.file_init_select()
+        self.filePickeeeer.on_result = self.pick_files_result
 
         self.spacing = 0
-
         self.controls = [
             self.txtfPath,
             ft.FilledButton(expand=1,text="File", on_click=lambda _: self.filePickeeeer.pick_files(allowed_extensions=[self.fileType]))
         ]
 
+    #* workIdxに基づいて個性を選択
     def file_init_select(self):
         match self.workIdx:
             case 0:
                 self.fileType = "exe"
                 self.txtfPath.hint_text = "Builder Path"
+                self.filePickeeeer = filePickers["builder_pick"]
             case 1:
                 self.fileType = "cif"
                 self.txtfPath.hint_text = "'.cif' File Path"
+                self.filePickeeeer = filePickers["cif_pick"]
             case 2:
                 self.fileType = "txt"
                 self.txtfPath.hint_text = "Output File Path"
+                self.filePickeeeer = filePickers["outpuuuut_pick"]
             case _:
                 self.fileType = "txt"
                 self.txtfPath.hint_text = "allowed_extensions is not selected."
+                self.filePickeeeer = filePickers["outpuuuut_save"]
+        self.txtfPath.value = ""
 
+    #*ファイルピッカーの戻り値に対するするイベント。実際のデータ処理は下のpath_changed関数。
     def pick_files_result(self, e: ft.FilePickerResultEvent):
         if e.files:
             self.path_changed(e.files[0].path)
         self.update()
 
+    #*イベントおよび引数に指定した文字列を判定してクラス内の各種保持データに反映させる。外部からの呼び出しに対応させるためイベント関数から独立させた。
     def path_changed(self, changedStr:Optional[str]=None):
         if changedStr is not None:
             self.txtfPath.value = changedStr.replace(os.sep, '/').strip('"')
@@ -205,29 +217,22 @@ class FilePickerBar(ft.Row):
             self.filePath = value
             print(f"Selected files:name={self.fileName}")
             print(f"Selected files:{self.filePath}")
-
         else:
             self.fileName = ""
             self.filePath = ""
             print("not_filed")
-        self.update()
 
+    #*ﾃｷｽﾄﾌｨｰﾙﾄﾞからフォーカスが外れた時にイベントとして変化を受け取る。実際のデータ処理は上のpath_changed関数。
     def txtf_value_change(self, e:ft.ControlEvent):
-        line:Optional[str] = e.control.value
-        if line == "" or line is None:
-            self.fileName = ""
-            self.filePath = ""
-        else:
-            self.path_changed(line)
+        self.path_changed(e.control.value)
         self.update()
 
 class Tab_0_FilePathSelect(TabContentsContainer):
-    def __init__(self, visible:bool):
-        super().__init__(workIdx=0, visible=visible)
-        #global fileData
-        self.pick1 = FilePickerBar(filePickers["builder_pick"],0)
-        self.pick2 = FilePickerBar(filePickers["cif_pick"],1)
-        self.pick3 = FilePickerBar(filePickers["outpuuuut_pick"],2)
+    def __init__(self):
+        super().__init__(workIdx=0, visible=True)
+        self.pick1 = FilePickerBar(0)
+        self.pick2 = FilePickerBar(1)
+        self.pick3 = FilePickerBar(2)
 
         self.content = ft.Column([
             ft.Text("Builder Path"),
@@ -239,9 +244,7 @@ class Tab_0_FilePathSelect(TabContentsContainer):
         ])
 
         if "builder_path" in settingData:
-            self.pick1.txtfPath.value = settingData["builder_path"]
-            self.pick1.fileName = os.path.splitext(os.path.basename(settingData["builder_path"]))[0]
-            self.pick1.filePath = settingData["builder_path"]
+            self.pick1.path_changed(settingData["builder_path"])
 
     def read_cif_file(self)->bool:
         global fileData
@@ -570,7 +573,7 @@ class MakeCiApp(ft.Container):
 
         self.testholder = PlaceHoldeeeer()
 
-        self.tab0 = Tab_0_FilePathSelect(visible=True)
+        self.tab0 = Tab_0_FilePathSelect()
         self.tab1 = Tab_1_ReadData(visible=False)
         self.tabContents = ft.Stack(
             expand=10,
