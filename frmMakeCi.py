@@ -152,67 +152,73 @@ class TabContentsContainer(ft.Container):
         self.visible = visible
         self.expand = 10
         self.padding = 10
-        self.bgcolor = ft.Colors.GREY_900
+        self.bgcolor = ft.Colors.GREY_50
 
+#* 主にタブ0に配置しているファイル選択用のﾃｷｽﾄﾌｨｰﾙﾄﾞとﾎﾞﾀﾝのペア。直接入力にも対応してる(はず)
 class FilePickerBar(ft.Row):
     def __init__(self, filePicker:ft.FilePicker, workIdx:int):
         super().__init__()
         self.fileName:str = ""
         self.filePath:str = ""
         self.workIdx = workIdx
-        self.data = workIdx
         self.fileType:str
-        self.fileLabel:str
         self.filePickeeeer = filePicker
         self.filePickeeeer.on_result = self.pick_files_result
+        self.txtfPath = ft.TextField(expand=9,dense=True,on_blur=self.txtf_value_change)
         self.file_init_select()
-        self.textF_path = ft.TextField(expand=9,hint_text=self.fileLabel,dense=True,on_change=self.value_change)
 
         self.spacing = 0
 
-
         self.controls = [
-            self.textF_path,
+            self.txtfPath,
             ft.FilledButton(expand=1,text="File", on_click=lambda _: self.filePickeeeer.pick_files(allowed_extensions=[self.fileType]))
         ]
 
     def file_init_select(self):
-        match self.data:
+        match self.workIdx:
             case 0:
                 self.fileType = "exe"
-                self.fileLabel = "Builder Path"
+                self.txtfPath.hint_text = "Builder Path"
             case 1:
                 self.fileType = "cif"
-                self.fileLabel = "'.cif' File Path"
+                self.txtfPath.hint_text = "'.cif' File Path"
             case 2:
                 self.fileType = "txt"
-                self.fileLabel = "Output File Path"
+                self.txtfPath.hint_text = "Output File Path"
             case _:
                 self.fileType = "txt"
-                self.fileLabel = "404 Path"
+                self.txtfPath.hint_text = "allowed_extensions is not selected."
 
     def pick_files_result(self, e: ft.FilePickerResultEvent):
         if e.files:
-            self.fileName = e.files[0].name
-            self.filePath = e.files[0].path.replace(os.sep, '/')
-            print(f"Selected files:name={e.files[0].name}")
-            print(f"Selected files:{self.filePath}")
-            self.textF_path.value = self.filePath
+            self.path_changed(e.files[0].path)
         self.update()
-    
-    def value_change(self, e:ft.ControlEvent):
+
+    def path_changed(self, changedStr:Optional[str]=None):
+        if changedStr is not None:
+            self.txtfPath.value = changedStr.replace(os.sep, '/').strip('"')
+        if self.txtfPath.value is None:
+            self.txtfPath.value = ""
+        value:str = self.txtfPath.value.replace(os.sep, '/').strip('"')
+        if os.path.isfile(value):
+            self.fileName = os.path.splitext(os.path.basename(value))[0]
+            self.filePath = value
+            print(f"Selected files:name={self.fileName}")
+            print(f"Selected files:{self.filePath}")
+
+        else:
+            self.fileName = ""
+            self.filePath = ""
+            print("not_filed")
+        self.update()
+
+    def txtf_value_change(self, e:ft.ControlEvent):
         line:Optional[str] = e.control.value
         if line == "" or line is None:
             self.fileName = ""
             self.filePath = ""
         else:
-            if os.path.isfile(line):
-                self.fileName = os.path.splitext(os.path.basename(line))[0]
-                self.filePath = line
-            else:
-                self.fileName = ""
-                self.filePath = ""
-            #print(self.filePath)
+            self.path_changed(line)
         self.update()
 
 class Tab_0_FilePathSelect(TabContentsContainer):
@@ -233,7 +239,7 @@ class Tab_0_FilePathSelect(TabContentsContainer):
         ])
 
         if "builder_path" in settingData:
-            self.pick1.textF_path.value = settingData["builder_path"]
+            self.pick1.txtfPath.value = settingData["builder_path"]
             self.pick1.fileName = os.path.splitext(os.path.basename(settingData["builder_path"]))[0]
             self.pick1.filePath = settingData["builder_path"]
 
