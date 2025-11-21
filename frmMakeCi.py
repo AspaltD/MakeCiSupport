@@ -227,6 +227,7 @@ class FilePickerBar(ft.Row):
         self.path_changed(e.control.value)
         self.update()
 
+
 class Tab_0_FilePathSelect(TabContentsContainer):
     def __init__(self):
         super().__init__(workIdx=0, visible=True)
@@ -242,54 +243,53 @@ class Tab_0_FilePathSelect(TabContentsContainer):
             ft.Text("Output Path"),
             self.pick3
         ])
-
+        #! ここで設定ファイルにBuilderのデータがあれば呼び出している。将来的には関数として独立させたい。
         if "builder_path" in settingData:
             self.pick1.path_changed(settingData["builder_path"])
 
     def read_cif_file(self)->bool:
         global fileData
         fileData.clear()
-        fileData = [["FileData_Read"]]
+        fileData = [["FileData_CIF"]]
         cifPath = self.pick2.filePath
         outputPath = os.getcwd() + os.sep + "outpuuuut.txt"
-        self.pick3.filePath = outputPath
         if self.pick1.filePath == "":
             print("BuilderPath not enter.")
             return False
         if cifPath == "":
             print(".cif_filePath not enter.")
             return False
-        i:int = 0
+        i:int = -1
         atoms:bool = False
         atomIdx:int = 0
         atomSecIdx:int = 0
-        with open(self.pick2.filePath) as f:
-            for line in f:
+        with open(cifPath) as f:
+            for lineS in f:
+                i += 1
+                line = lineS.strip()
                 match i:
                     case 0:
-                        if os.path.splitext(os.path.basename(cifPath))[0].lower() in line:
-                            fileData.append(["fileName", line.strip()])
+                        if self.pick2.fileName.lower() in line:
+                            fileData.append(["fileName", line])
                         else:
                             print("file is not compleat by Olex2-1.5")
                             return False
-                    case 400:
+                    case 450:
                         print("readline is over.(400 lines)")
                         return False
                     case _:
                         if "_space_group_IT_number" in line:
-                            spaceNumStock = line.strip().split()
-                            fileData.append([spaceNumStock[0][1:],spaceNumStock[1]])
+                            fileData.append(["space_group_IT_number", line.split()[1]])
                         elif "_space_group_name_H-M_alt" in line:
-                            spaceGStock = line.strip().split()
-                            fileData.append([spaceGStock[0][1:],line.strip().split("'")[1]])
+                            fileData.append(["space_group_name_H-M_alt", line.split("'")[1]])
                         elif "_cell_length_" in line:
-                            lengthStock = line.strip().split()
-                            fileData.append([lengthStock[0][1:],lengthStock[1].split('(')[0]])
-                            #print(line.strip().split())
+                            Stock = line.split()
+                            fileData.append([Stock[0][1:], Stock[1].split('(')[0]])
                         elif "_cell_angle_" in line:
-                            angleStock = line.strip().split()
-                            fileData.append([angleStock[0][1:],angleStock[1].split('(')[0]])
-                            #print(line.strip())
+                            Stock = line.split()
+                            fileData.append([Stock[0][1:], Stock[1].split('(')[0]])
+                        elif "_cell_volume" in line:
+                            fileData.append(["cell_volume", line.split()[1].split('(')[0]])
                         elif "_atom_site_disorder_group" in line:
                             atoms = True
                             atomIdx = 1
@@ -306,33 +306,30 @@ class Tab_0_FilePathSelect(TabContentsContainer):
                         else:
                             pass
                         if atoms:
-                            atomsStock = line.strip().split()
-                            #print(atomsStock)
-                            if len(atomsStock) < 5:
+                            #? 行が正しく原子情報を示しているか判定
+                            atomParts = line.split()
+                            if len(atomParts) < 5:
                                 continue
-                            atomName = atomsStock[1]
-
+                            #? 第1，第2 インデックス番号の決定
+                            atomName = atomParts[1]
                             if atomIdx == 1 and atomSecIdx == 1:
-                                fileData.append([atomName,str(atomIdx),str(atomSecIdx),atomsStock[2].split('(')[0],atomsStock[3].split('(')[0],atomsStock[4].split('(')[0]])
-                                if not atomsStock[7] == "1":
-                                    fileData[-1].append(atomsStock[7].split('(')[0])
-                                atomSecIdx = 2
+                                pass
                             elif atomName == fileData[-1][0]:
                                 atomIdx = int(fileData[-1][1])
-                                atomSecIdx = int(fileData[-1][2]) + 1
-                                fileData.append([atomName,str(atomIdx),str(atomSecIdx),atomsStock[2].split('(')[0],atomsStock[3].split('(')[0],atomsStock[4].split('(')[0]])
-                                if not atomsStock[7] == "1":
-                                    fileData[-1].append(atomsStock[7].split('(')[0])
                             else:
                                 atomIdx = int(fileData[-1][1]) + 1
                                 atomSecIdx = 1
-                                fileData.append([atomName,str(atomIdx),str(atomSecIdx),atomsStock[2].split('(')[0],atomsStock[3].split('(')[0],atomsStock[4].split('(')[0]])
-                                if not atomsStock[7] == "1":
-                                    fileData[-1].append(atomsStock[7].split('(')[0])
-                i += 1
+                            #? リストへの追加。次も同じ種類の元素と仮定してatomSexIdxを+1して次へ。
+                            #? また，occの有無を判別して混晶なら占有比の抜き出しも行う
+                            fileData.append([atomName,str(atomIdx),str(atomSecIdx),atomParts[2].split('(')[0],atomParts[3].split('(')[0],atomParts[4].split('(')[0]])
+                            atomSecIdx += 1
+                            if not atomParts[7] == "1":
+                                fileData[-1].append(atomParts[7].split('(')[0])
+
+        #? 仮出力ファイルで出力
         outputLines = ["MakeCi_output"]
         for line in fileData:
-            if line[0] == "FileData_Read":
+            if line[0] == "FileData_CIF":
                 pass
             else:
                 outputLines.append('  '.join(line))
