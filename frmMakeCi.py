@@ -10,6 +10,8 @@ import mdAutoTest
 filePickers: Dict[str,ft.FilePicker]        #*ファイルピッカーの辞書
 fileData: List[List[str]] = [["FileData"]]  #*読み書きするファイルの中身を一時保持するための二次元リスト
 settingData: Dict[str,str] = {}             #*Builderのパスの保存，バージョン情報などの保持情報を入れる辞書
+outpuuuutPath:str = os.getcwd() + os.sep + "outpuuuut.txt"
+
 
 #* アプリ各所でレイアウト維持のために使用するプレースホルダ。デフォルトの色指定をランダムで設定してる。
 class PlaceHoldeeeer(ft.Placeholder):
@@ -371,13 +373,13 @@ class Tab_0_FilePathSelect(TabContentsContainer):
 
     #* 直近の場所に仮出力ファイル(outpuuuut.txt)を保存。どちらの読み込み方でも一時保存はする。
     def save_outpuuuut_file(self)->bool:
-        outputPath = os.getcwd() + os.sep + "outpuuuut.txt"
+        outputPath = outpuuuutPath
         outputLines:List[str] = ["MakeCi_output"]
         for line in fileData:
             if re.match('FileData_.*', line[0]):
                 pass
             else:
-                outputLines.append('\t'.join(line))
+                outputLines.append('   '.join(line))
         with open(outputPath, mode='w') as f:
             f.write('\n'.join(outputLines))
         return True
@@ -388,77 +390,89 @@ class Tab_1_ReadData(TabContentsContainer):
         super().__init__(workIdx=1, visible=visible)
         self.padding = 10
 
-        #格子定数用
-        self.spaceGItNum:str
-        self.spaceGName:str
-        self.dataName = ft.TextField(expand=1,label="Data_Name",read_only=True)
-        self.cellLenA = ft.TextField(expand=1,label="Cell_Length_a",read_only=True)
-        self.cellLenB = ft.TextField(expand=1,label="Cell_Length_b",read_only=True)
-        self.cellLenC = ft.TextField(expand=1,label="Cell_Length_c",read_only=True)
-        self.cellAngleA = ft.TextField(expand=1,label="Cell_Angle_alpha",read_only=True)
-        self.cellAngleB = ft.TextField(expand=1,label="Cell_Angle_beta",read_only=True)
-        self.cellAngleC = ft.TextField(expand=1,label="Cell_Angle_gamma",read_only=True)
-        self.cellVolume = ft.TextField(expand=1,label="Cell_Volume",read_only=True)
-        self.cellLengths = ft.Row(
-            spacing=0,
-            controls=[
-                self.cellLenA,
-                self.cellLenB,
-                self.cellLenC
-                ]
-            )
-        self.cellAngles = ft.Row(
-            spacing=0,
-            controls=[
-                self.cellAngleA,
-                self.cellAngleB,
-                self.cellAngleC
-                ]
-            )
-        self.cellData = ft.Column(
-            expand=1,
+        #* 格子定数用
+            #*個別データ
+        self.dataName = ft.TextField(expand=1,dense=True,label="Data_Name",hint_text="fileName")
+        self.spaceGItNum = ft.TextField(expand=1,dense=True,label="SpaceG_IT_Num",hint_text="space_group_IT_number",read_only=True)
+        self.spaceGName = ft.TextField(expand=1,dense=True, label="SpaceG_Name",hint_text="space_group_name_H-M_alt",read_only=True)
+        self.cellLenA = ft.TextField(expand=1,dense=True,label="Cell_Length_a",hint_text="cell_length_a",read_only=True)
+        self.cellLenB = ft.TextField(expand=1,dense=True,label="Cell_Length_b",hint_text="cell_length_b",read_only=True)
+        self.cellLenC = ft.TextField(expand=1,dense=True,label="Cell_Length_c",hint_text="cell_length_c",read_only=True)
+        self.cellAngleA = ft.TextField(expand=1,dense=True,label="Cell_Angle_alpha",hint_text="cell_angle_alpha",read_only=True)
+        self.cellAngleB = ft.TextField(expand=1,dense=True,label="Cell_Angle_beta",hint_text="cell_angle_beta",read_only=True)
+        self.cellAngleC = ft.TextField(expand=1,dense=True,label="Cell_Angle_gamma",hint_text="cell_angle_gamma",read_only=True)
+        self.cellVolume = ft.TextField(expand=1,dense=True,label="Cell_Volume",hint_text="cell_volume",read_only=True)
+            #* 格子定数コンテンツ全体
+        self.cellDataGroup = ft.Column(
+            expand=2,
             controls=[
                 self.dataName,
-                self.cellLengths,
-                self.cellAngles
+                ft.Row(
+                    spacing=0,
+                    controls=[
+                        self.cellLenA,
+                        self.cellLenB,
+                        self.cellLenC
+                    ]
+                ),
+                ft.Row(
+                    spacing=0,
+                    controls=[
+                        self.cellAngleA,
+                        self.cellAngleB,
+                        self.cellAngleC
+                    ]
+                ),
+                ft.Row(
+                    spacing=0,
+                    controls=[
+                        self.spaceGItNum,
+                        self.spaceGName,
+                        self.cellVolume
+                    ]
+                )
             ]
         )
-        #原子座標用
+
+        self.cellTxtfList:List[ft.TextField] = [
+            self.dataName, self.spaceGItNum, self.spaceGName,
+            self.cellLenA, self.cellLenB, self.cellLenC,
+            self.cellAngleA, self.cellAngleB, self.cellAngleC,
+            self.cellVolume
+        ]
+
+        #* 原子座標の表関連
         self.selectedRows:List[int] = []
         self.readTable = ft.DataTable(
             border = ft.border.all(1, ft.Colors.BLACK),
             show_checkbox_column=True,
-            column_spacing=20,
+            column_spacing=24,
             columns=[
                 ft.DataColumn(ft.Text("Atom")),
-                ft.DataColumn(ft.Text("Idx1"),numeric=True),
-                ft.DataColumn(ft.Text("Idx2"),numeric=True),
-                ft.DataColumn(ft.Text("X"),numeric=True),
-                ft.DataColumn(ft.Text("Y"),numeric=True),
-                ft.DataColumn(ft.Text("Z"),numeric=True),
+                ft.DataColumn(ft.Text(" Idx1 "),heading_row_alignment=ft.MainAxisAlignment.CENTER,numeric=True),
+                ft.DataColumn(ft.Text(" Idx2 "),heading_row_alignment=ft.MainAxisAlignment.CENTER,numeric=True),
+                ft.DataColumn(ft.Text("  X  "),heading_row_alignment=ft.MainAxisAlignment.CENTER,numeric=True),
+                ft.DataColumn(ft.Text("  Y  "),heading_row_alignment=ft.MainAxisAlignment.CENTER,numeric=True),
+                ft.DataColumn(ft.Text("  Z  "),heading_row_alignment=ft.MainAxisAlignment.CENTER,numeric=True),
                 ft.DataColumn(ft.Text("Occ."),numeric=True)
-            ]
-        )
-        self.readTableBase = ft.Column(
-            expand=2,
-            controls=[
-                self.readTable
             ],
-            scroll=ft.ScrollMode.ALWAYS
+            rows=[]
         )
 
         self.saveFilePicker = filePickers["outpuuuut_save"]
         self.saveFilePicker.on_result = self.pick_files_result
         self.outputPath:str
 
-
-
-
         self.content = ft.Column(
             controls=[
-                self.cellData,
-                #PlaceHoldeeeer(2)
-                self.readTableBase
+                self.cellDataGroup,
+                ft.Column(
+                    expand=3,
+                    controls=[
+                        self.readTable
+                    ],
+                    scroll=ft.ScrollMode.ALWAYS
+                )
             ]
         )
 
@@ -466,21 +480,22 @@ class Tab_1_ReadData(TabContentsContainer):
         #* read_row -> data = インデックス番号
         self.readTable.rows.clear()
         read_row:ft.DataRow
-        i:int = 0
+        i:int = -1
         n:int = 0
         for inList in fileData:
+            i += 1
             if i == 0:
                 if re.match('FileData_.*',inList[0]):
-                    pass
+                    continue
                 else:
                     return
-            elif i == 1 and inList[0] == 'fileName':
-                self.dataName.value = inList[1]
-                #continue
             elif i == 400:
+                print("list length is over(400)")
                 return
-            if i >= 2:
+            else:
                 match inList[0]:
+                    case 'fileName':
+                        self.dataName.value = inList[1]
                     case 'space_group_IT_number':
                         self.spaceGItNum = inList[1]
                     case 'space_group_name_H-M_alt':
@@ -500,14 +515,13 @@ class Tab_1_ReadData(TabContentsContainer):
                     case x if re.match('[A-Z][a-z]{0,1}',x):
                         read_row = ft.DataRow(cells=[],data=n,on_select_changed=self.row_CBox_clicked)
                         for inData in inList:
-                            read_row.cells.append(ft.DataCell(ft.Text(inData)))
+                            read_row.cells.append(ft.DataCell(ft.Text(value=inData)))
                         if len(inList) <= 6:
-                            read_row.cells.append(ft.DataCell(content=ft.Text("-")))
+                            read_row.cells.append(ft.DataCell(ft.Text("-")))
                         self.readTable.rows.append(read_row)
                         n += 1
                     case _:
                         pass
-            i += 1
 
     def row_CBox_clicked(self,e:ft.ControlEvent):
         if e.control.selected:
@@ -526,7 +540,6 @@ class Tab_1_ReadData(TabContentsContainer):
 
     def save_output_file(self, outputFilePath:str)->bool:
         outputPath:str
-        outpuuuutPath:str = os.getcwd() + os.sep + "outpuuuut.txt"
         if os.path.isfile(outputFilePath):
             outputPath = outputFilePath
         else:
@@ -689,7 +702,9 @@ class MakeCiApp(ft.Container):
                     else:
                         for delIdx in self.tab1.selectedRows:
                             for roooow in self.tab1.readTable.rows:
-                                if roooow.data == delIdx:
+                                if roooow.data == 404:
+                                    pass
+                                elif roooow.data == delIdx:
                                     #! 一回分の戻る操作を可能にしたい
                                     self.tab1.readTable.rows.remove(roooow)
                         self.tab1.selectedRows.clear()
