@@ -476,7 +476,11 @@ class Tab_1_ReadData(TabContentsContainer):
             ]
         )
 
+    #* Tab0の関数で読み込んでいる(はず)のfileData変数を参照して格子情報を入力。
     def insert_cells(self):
+        # txtf_idx -> 0:fileName, 1:SpaceGITNum, 2:SpaceGName,
+        # 3:CellLen_a, 4:CellLen_b, 5:CellLen_c,
+        # 6:CellAngle_a, 7:CellAngle_b, 8:CellAngle_c, 9:CellVolume
         #* read_row -> data = インデックス番号
         self.readTable.rows.clear()
         read_row:ft.DataRow
@@ -493,36 +497,26 @@ class Tab_1_ReadData(TabContentsContainer):
                 print("list length is over(400)")
                 return
             else:
-                match inList[0]:
-                    case 'fileName':
-                        self.dataName.value = inList[1]
-                    case 'space_group_IT_number':
-                        self.spaceGItNum = inList[1]
-                    case 'space_group_name_H-M_alt':
-                        self.spaceGName = inList[1]
-                    case 'cell_length_a':
-                        self.cellLenA.value = inList[1]
-                    case 'cell_length_b':
-                        self.cellLenB.value = inList[1]
-                    case 'cell_length_c':
-                        self.cellLenC.value = inList[1]
-                    case 'cell_angle_alpha':
-                        self.cellAngleA.value = inList[1]
-                    case 'cell_angle_beta':
-                        self.cellAngleB.value = inList[1]
-                    case 'cell_angle_gamma':
-                        self.cellAngleC.value = inList[1]
-                    case x if re.match('[A-Z][a-z]{0,1}',x):
-                        read_row = ft.DataRow(cells=[],data=n,on_select_changed=self.row_CBox_clicked)
-                        for inData in inList:
-                            read_row.cells.append(ft.DataCell(ft.Text(value=inData)))
-                        if len(inList) <= 6:
-                            read_row.cells.append(ft.DataCell(ft.Text("-")))
-                        self.readTable.rows.append(read_row)
-                        n += 1
-                    case _:
-                        pass
+                atom:bool = True
+                    #* 格子の基礎データ(txtfに入力されるもの)を挿入。
+                for txtf in self.cellTxtfList:
+                    if inList[0] == txtf.hint_text:
+                        txtf.value = inList[1]
+                        atom = False
+                    #* 原子座標をデータテーブルに入力。
+                if atom and re.match('[A-Z][a-z]{0,1}', inList[0]):
+                    read_row = ft.DataRow(cells=[],data=n,on_select_changed=self.row_CBox_clicked)
+                    for inData in inList:
+                        read_row.cells.append(ft.DataCell(ft.Text(value=inData)))
+                    if len(inList) <= 6:
+                        read_row.cells.append(ft.DataCell(ft.Text("-")))
+                    self.readTable.rows.append(read_row)
+                    n += 1
+                else:
+                    pass
 
+    #* 行をクリックしたときに削除リストに追加したり消したりするイベント。
+    #* 実際に行を消すイベントは本体にある。
     def row_CBox_clicked(self,e:ft.ControlEvent):
         if e.control.selected:
             e.control.selected = False
@@ -535,9 +529,9 @@ class Tab_1_ReadData(TabContentsContainer):
             e.control.selected = True
             self.selectedRows.append(e.control.data)
         print(self.selectedRows)
-        #print(e.control.data)
         self.update()
 
+    #*
     def save_output_file(self, outputFilePath:str)->bool:
         outputPath:str
         if os.path.isfile(outputFilePath):
