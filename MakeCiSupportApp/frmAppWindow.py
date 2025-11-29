@@ -75,35 +75,49 @@ class Left_TabChangeBar(ft.Container):
             ]
         )
 
+
+class Enum_BtmBtnIdx(IntEnum):
+    NEXT_TAB = 0
+    EXIT_APP = 1
+    OTHER_FUNC1 = 2
+    OTHER_FUNC2 = 3
 class Btm_TabFuncBtn(ft.FilledButton):
-    def __init__(self, btmBtnClicked:ft.ControlEvent, text:str):
+    def __init__(self, btmBtnClicked:ft.ControlEvent, text:str, workPlaceIdx:Enum_BtmBtnIdx):
         super().__init__()
         self.on_click = btmBtnClicked
         self.width = 120
         self.text = text
+        self.workPlaceIdx = workPlaceIdx
 
 class BtmBtn_EXit(Btm_TabFuncBtn):
     def __init__(self):
-        super().__init__(btmBtnClicked=lambda _: self.page.window.close(), text="ExitApp")
+        super().__init__(
+            btmBtnClicked=lambda _: self.page.window.close(),
+            text="ExitApp",
+            workPlaceIdx=Enum_BtmBtnIdx.EXIT_APP
+            )
 
 class BtmBtn_Tab0_ReadCIF(Btm_TabFuncBtn):
     def __init__(self, btmBtnClicked: ft.ControlEvent):
-        super().__init__(btmBtnClicked, "ReadCif")
+        super().__init__(btmBtnClicked, "ReadCif", Enum_BtmBtnIdx.NEXT_TAB)
 class BtmBtn_Tab0_ReadTXT(Btm_TabFuncBtn):
     def __init__(self, btmBtnClicked: ft.ControlEvent):
-        super().__init__(btmBtnClicked, "ReadTXT")
+        super().__init__(btmBtnClicked, "ReadTXT", Enum_BtmBtnIdx.OTHER_FUNC1)
 class BtmBtn_Tab1_SaveRun(Btm_TabFuncBtn):
     def __init__(self, btmBtnClicked: ft.ControlEvent):
-        super().__init__(btmBtnClicked, "Save&Run")
+        super().__init__(btmBtnClicked, "Save&Run", Enum_BtmBtnIdx.NEXT_TAB)
 class BtmBtn_Tab1_Save(Btm_TabFuncBtn):
     def __init__(self, btmBtnClicked: ft.ControlEvent):
-        super().__init__(btmBtnClicked, "Save")
+        super().__init__(btmBtnClicked, "Save", Enum_BtmBtnIdx.OTHER_FUNC1)
 class BtmBtn_Tab1_Remove(Btm_TabFuncBtn):
     def __init__(self, btmBtnClicked: ft.ControlEvent):
-        super().__init__(btmBtnClicked, "Remove")
+        super().__init__(btmBtnClicked, "Remove", Enum_BtmBtnIdx.OTHER_FUNC2)
+class BtmBtn_Tab2_Next(Btm_TabFuncBtn):
+    def __init__(self, btmBtnClicked: ft.ControlEvent):
+        super().__init__(btmBtnClicked, "Next", Enum_BtmBtnIdx.NEXT_TAB)
 class BtmBtn_Tab2_Stop(Btm_TabFuncBtn):
     def __init__(self, btmBtnClicked: ft.ControlEvent):
-        super().__init__(btmBtnClicked, "Stop")
+        super().__init__(btmBtnClicked, "Stop", Enum_BtmBtnIdx.OTHER_FUNC1)
 
 class Btm_BtnBar(ft.Row):
     def __init__(self, tabIdx:Enum_TabIdx):
@@ -111,6 +125,32 @@ class Btm_BtnBar(ft.Row):
         self.expand = 1
         self.alignment = ft.MainAxisAlignment.END
         self.tabIdx = tabIdx
+        self.controls:List[Btm_TabFuncBtn] = []
+
+    def add_btmBtn(self, btmBtn:Btm_TabFuncBtn):
+        newBtnList:List[Btm_TabFuncBtn] = []
+        for btn in self.controls:
+            if btmBtn.workPlaceIdx == btn.workPlaceIdx: continue
+            elif btmBtn.workPlaceIdx < btn.workPlaceIdx:
+                newBtnList.append(btmBtn)
+            newBtnList.append(btn)
+        self.controls = newBtnList
+
+
+class Cn_TabContainer(ft.Container):
+    def __init__(self):
+        super().__init__(
+            expand=10,
+            padding=10,
+            bgcolor=ft.Colors.GREY_50
+        )
+        
+class Cn_PlaceHoldeeeer(ft.Placeholder):
+    def __init__(self):
+        super().__init__()
+        self.expand = True
+        self.color = ft.Colors.random()
+
 
 
 
