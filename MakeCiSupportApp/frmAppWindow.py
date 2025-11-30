@@ -225,12 +225,29 @@ class Cn_TabContainer(ft.Container):
         )
         self.tabIdx = tabIdx
 
-class Cn_PlaceHoldeeeer(Cn_TabContainer):
+class Cn_Tab99_PlaceHoldeeeer(Cn_TabContainer):
     def __init__(self):
         super().__init__(tabIdx=Enum_TabIdx.PLACE_HOLDER, defVisible=True)
         self.content = ft.Placeholder(color=ft.Colors.random())
 
+class Cn_Tab0_FilePathSelect(Cn_TabContainer):
+    def __init__(self):
+        super().__init__(tabIdx=Enum_TabIdx.FILE_PATH_SELECT, defVisible=True)
+        self.pickBuilder = Tab0_FPBar_Builder()
+        self.pickCIF = Tab0_FPBar_CIF()
+        self.pickOutput = Tab0_FPBar_Output()
 
+        self.content = ft.Column([
+            ft.Text("Builder Path"),
+            self.pickBuilder,
+            ft.Text("CIF File Path"),
+            self.pickCIF,
+            ft.Text("Output File Path"),
+            self.pickOutput
+        ])
+
+        if "builder_path" in settingData:
+            self.pickBuilder.path_change(settingData['builder_path'])
 
 
 
