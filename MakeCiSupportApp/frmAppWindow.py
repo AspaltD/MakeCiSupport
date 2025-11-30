@@ -1,10 +1,11 @@
 import flet as ft
 from pathlib import Path
 import re
-from typing import Final, Dict, List
+from typing import Final, Dict, List, Optional
 from enum import Enum, IntEnum
+import os
 
-filePickers: Dict[str, ft.FilePicker]
+filePickers: Dict[Enum_FilePickerIdx, ft.FilePicker]
 fileData: List[List[str]] = []
 settingData: Dict[str, str] = {}
 OUTPUUUUT_PATH:Path = Path('MakeCiSupportApp/outpuuuut.txt')
@@ -14,6 +15,7 @@ class Enum_TabIdx(IntEnum):
     READ_DATA = 1
     BUILDER_LOG = 2
     BUILDER_RESULT = 3
+    PLACE_HOLDER = 99
     #TAB_404 = 404
 
 
@@ -21,18 +23,20 @@ class Enum_TabIdx(IntEnum):
 #*TabChangeBar内でボタンの間に挟む「▼」文字。繰り返し構造のためクラス化してる。
 class Left_DownMarkTxt(ft.Text):
     def __init__(self):
-        super().__init__()
-        self.width = 180
-        self.text_align = ft.TextAlign.CENTER
-        self.value = "▼"
+        super().__init__(
+            width=180,
+            text_align=ft.TextAlign.CENTER,
+            value="▼"
+        )
 
 #*TabChangeBar内のタブを表すボタンの抽象クラスに当たるもの。
 #*引数にタブ番号と動作設定(動作内容の関係でfrm本体に渡してもらう必要がある)，表示テキストを指定。
 class Left_TabBtn(ft.FilledButton):
     def __init__(self, tabIdx:Enum_TabIdx, leftBtnClicked:ft.ControlEvent, text:str):
-        super().__init__()
-        self.width = 150
-        self.height = 40
+        super().__init__(
+            width=150,
+            height=40
+        )
         self.workIdx = tabIdx
         self.on_click = leftBtnClicked
 
@@ -53,11 +57,12 @@ class Left_TabBtn_Tab3(Left_TabBtn):
 #*引数にボタン動作を要求
 class Left_TabChangeBar(ft.Container):
     def __init__(self, leftBtnClicked:ft.ControlEvent):
-        super().__init__()
-        self.border = ft.border.all(1, ft.Colors.BLACK)
-        self.padding = 10
-        self.expand = 1
-        self.bgcolor = ft.Colors.GREY_300
+        super().__init__(
+            border=ft.border.all(1, ft.Colors.BLACK),
+            padding=10,
+            expand=1,
+            bgcolor=ft.Colors.GREY_300
+        )
 
         self.content = ft.Column(
             height=520,
@@ -83,10 +88,11 @@ class Enum_BtmBtnIdx(IntEnum):
     OTHER_FUNC2 = 3
 class Btm_TabFuncBtn(ft.FilledButton):
     def __init__(self, btmBtnClicked:ft.ControlEvent, text:str, workPlaceIdx:Enum_BtmBtnIdx):
-        super().__init__()
+        super().__init__(
+            width=120,
+            text=text
+        )
         self.on_click = btmBtnClicked
-        self.width = 120
-        self.text = text
         self.workPlaceIdx = workPlaceIdx
 
 class BtmBtn_EXit(Btm_TabFuncBtn):
@@ -121,9 +127,10 @@ class BtmBtn_Tab2_Stop(Btm_TabFuncBtn):
 
 class Btm_BtnBar(ft.Row):
     def __init__(self, tabIdx:Enum_TabIdx):
-        super().__init__()
-        self.expand = 1
-        self.alignment = ft.MainAxisAlignment.END
+        super().__init__(
+            expand=1,
+            alignment=ft.MainAxisAlignment.END
+        )
         self.tabIdx = tabIdx
         self.controls:List[Btm_TabFuncBtn] = []
 
@@ -137,19 +144,94 @@ class Btm_BtnBar(ft.Row):
         self.controls = newBtnList
 
 
-class Cn_TabContainer(ft.Container):
+class Enum_FilePickerIdx(IntEnum):
+    BUILDER_PICK = 0
+    CIF_PICK = 1
+    OUTPUT_PICK = 2
+    OUTPUT_SAVE = 3
+
+    def get_fileType(self)->str:
+        match self.name:
+            case 'BUILDER_PICK':
+                return "exe"
+            case 'CIF_PICK':
+                return "cif"
+            case 'OUTPUT_PICK':
+                return "txt"
+            case 'OUTPUT_SAVE':
+                return "txt"
+
+class Tab_FilePicker_Bar(ft.Row):
+    def __init__(self, filePickerIdx:Enum_FilePickerIdx):
+        super().__init__(
+            spacing=0
+        )
+        self.filePickerIdx = filePickerIdx
+        self.filePickeeeer = filePickers[self.filePickerIdx]
+        self.filePickeeeer.on_result = self.filePicker_event
+        self.filePath:Path
+
+        self.pathTxtf = ft.TextField(expand=9, dense=True, on_blur=self.txtf_onBlur_event)
+        self.controls = [
+            self.pathTxtf,
+            ft.FilledButton(
+                expand=1,
+                text="File",
+                on_click=lambda _: self.filePickeeeer.pick_files(allowed_extensions=[self.filePickerIdx.get_fileType()])
+            )
+        ]
+
+    def path_change(self, changedStr:Optional[str]=None):
+        if changedStr is None:
+            self.pathTxtf.value = ""
+        else:
+            self.pathTxtf.value = changedStr.replace(os.sep, '/').strip('"')
+        value = Path(self.pathTxtf.value)
+        if Path.exists(value):
+            print(f"Selected files:name={value.name}")
+            print(f"Selected files:{value.resolve()}")
+        else:
+            print("is not filePath")
+
+    def txtf_onBlur_event(self, e:ft.ControlEvent):
+        self.path_change(e.control.value)
+        self.update()
+    def filePicker_event(self,e: ft.FilePickerResultEvent):
+        if e.files:
+            self.path_change(e.files[0].path)
+        self.update()
+
+class Tab0_FPBar_Builder(Tab_FilePicker_Bar):
     def __init__(self):
+        super().__init__(filePickerIdx=Enum_FilePickerIdx.BUILDER_PICK)
+        self.pathTxtf.hint_text = "Builder.exe Path"
+class Tab0_FPBar_CIF(Tab_FilePicker_Bar):
+    def __init__(self):
+        super().__init__(filePickerIdx=Enum_FilePickerIdx.CIF_PICK)
+        self.pathTxtf.hint_text = "CIF File Path"
+class Tab0_FPBar_Output(Tab_FilePicker_Bar):
+    def __init__(self):
+        super().__init__(filePickerIdx=Enum_FilePickerIdx.OUTPUT_PICK)
+        self.pathTxtf.hint_text = "Output File Path"
+
+
+class Cn_TabContainer(ft.Container):
+    def __init__(self, tabIdx:Enum_TabIdx, defVisible:bool):
         super().__init__(
             expand=10,
             padding=10,
-            bgcolor=ft.Colors.GREY_50
+            bgcolor=ft.Colors.GREY_50,
+            visible=defVisible
         )
-        
-class Cn_PlaceHoldeeeer(ft.Placeholder):
+        self.tabIdx = tabIdx
+
+class Cn_PlaceHoldeeeer(Cn_TabContainer):
     def __init__(self):
-        super().__init__()
-        self.expand = True
-        self.color = ft.Colors.random()
+        super().__init__(tabIdx=Enum_TabIdx.PLACE_HOLDER, defVisible=True)
+        self.content = ft.Placeholder(color=ft.Colors.random())
+
+
+
 
 
 
