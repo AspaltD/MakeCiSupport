@@ -6,9 +6,130 @@ from enum import Enum, IntEnum
 import os
 
 filePickers: Dict[Enum_FilePickerIdx, ft.FilePicker]
-fileData: List[List[str]] = []
+fileData:FileData
 settingData: Dict[str, str] = {}
 OUTPUUUUT_PATH:Path = Path('MakeCiSupportApp/outpuuuut.txt')
+
+class FileData(List[List[str]]):
+    def __init__(self):
+        self = [["Not Enter Data"]]
+
+    def printData(self):
+        i = -1
+        print("idx: row_data")
+        for row in self:
+            i += 1
+            print(f'{i}: {row}')
+
+    def save_outpuuuut_file(self):
+        outputLines:List[str] = ["MakeCi_outpuuuut"]
+        for line in self:
+            if re.match('FileData_.*', line[0]): continue
+            outputLines.append('   '.join(line))
+        with open(OUTPUUUUT_PATH, mode='w') as f:
+            f.write('\n'.join(outputLines))
+
+    def read_cif_file(self, cifPath:Path)->bool:
+        if cifPath.suffix[1:] == "": return False
+        if cifPath.suffix[1:] != "cif": return False
+        self.clear()
+        self.append(["FileData_CIF"])
+        i:int = -1
+        atoms:bool = False
+        atom1stIdx:int = 0
+        atom2ndIdx:int = 0
+        with open(cifPath) as f:
+            for lineS in f:
+                i += 1
+                line = lineS.strip()
+                if i >= 450 :
+                    print("readline is over.(400 lines)")
+                    return False
+                if i == 0:
+                    if cifPath.stem.lower() in line:
+                        self.append(["fileName", line])
+                        continue
+                    else:
+                        print("file is not compleat by Olex2-1.5")
+                        return False
+                if "_space_group_IT_number" in line:
+                    self.append(["space_group_IT_number", line.split()[1]])
+                elif "_space_group_name_H-M_alt" in line:
+                    stock = line.split("'")
+                    self.append(["space_group_name_H-M_alt", '_'.join(stock[1].split(' '))])
+                elif "_cell_length_" in line:
+                    stock = line.split()
+                    self.append([stock[0][1:], stock[1].split('(')[0]])
+                elif "_cell_angle_" in line:
+                    stock = line.split()
+                    self.append([stock[0][1:], stock[1].split('(')[0]])
+                elif "_cell_volume" in line:
+                    self.append(["cell_volume", line.split()[1].split('(')[0]])
+                elif "_atom_site_disorder_group" in line:
+                    atoms = True
+                    atom1stIdx = 1
+                    atom2ndIdx = 1
+                    continue
+                elif "loop_" in line:
+                    if atoms:
+                        print("read finished")
+                        print("i: " + str(i))
+                        break
+                    else:
+                        atoms = False
+                        continue
+                else:
+                    pass
+                if atoms:
+                    #? 行が正しく原子情報を示しているか判定
+                    atomParts = line.split()
+                    if len(atomParts) < 5:
+                        continue
+                    #? 第1，第2 インデックス番号の決定
+                    atomName = atomParts[1]
+                    if atom1stIdx == 1 and atom2ndIdx == 1:
+                        pass
+                    elif atomName == self[-1][0]:
+                        atom1stIdx = int(self[-1][1])
+                    else:
+                        atom1stIdx = int(self[-1][1]) + 1
+                        atom2ndIdx = 1
+                    #? リストへの追加。次も同じ種類の元素と仮定してatomSexIdxを+1して次へ。
+                    #? また，occの有無を判別して混晶なら占有比の抜き出しも行う
+                    self.append([atomName,str(atom1stIdx),str(atom2ndIdx),atomParts[2].split('(')[0],atomParts[3].split('(')[0],atomParts[4].split('(')[0]])
+                    atom2ndIdx += 1
+                    if not atomParts[7] == "1":
+                        self[-1].append(atomParts[7].split('(')[0])
+        self.save_outpuuuut_file()
+        return True
+
+    def read_output_file(self, outputFilePath:Path)->bool:
+        self.clear()
+        self.append(["FileData_Output"])
+        i:int = -1
+        with open(outputFilePath) as f:
+            for lineS in f:
+                i += 1
+                line = lineS.strip()
+                if i >= 200:
+                    print("readline is over.(200)")
+                    return False
+                if i == 0:
+                    if not re.match('MakeCi_.*', line):
+                        print("This txt_file is not output_file.")
+                        return False
+                    else: continue
+
+                lineP = line.split()
+                self.append([])
+                for data in lineP:
+                    self[-1].append(data)
+            print(f"end_line: {i}")
+        self.printData()
+        self.save_outpuuuut_file()
+        return True
+
+fileData = FileData()
 
 class Enum_TabIdx(IntEnum):
     FILE_PATH_SELECT = 0
@@ -249,7 +370,30 @@ class Cn_Tab0_FilePathSelect(Cn_TabContainer):
         if "builder_path" in settingData:
             self.pickBuilder.path_change(settingData['builder_path'])
 
+    def read_cif_file(self):
+        global fileData
+        fileData.clear()
 
 
+def main(page: ft.Page):
+    page.title = "Make Ci Support App"
+    page.window.width = 800
+    page.window.height = 605
+    page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
+    page.update()
 
+    global filePickers
+    for name in Enum_FilePickerIdx:
+        filePickers[name] = ft.FilePicker()
+        page.overlay.append(filePickers.get(name))
+    
+    global settingData
+    settingDataPath = Path('MakeCiSupportApp/makeci_setting.txt')
+#    if Path.is_file(settingDataPath):
+#        with open(settingDataPath) as f:
+#            for line in f:
+
+
+fileData.read_cif_file(Path("C:/Users/asufa/OneDrive/デスクトップ/1006_1h/MVAuNiUV_autored.cif"))
+fileData.printData()
 
