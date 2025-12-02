@@ -253,7 +253,7 @@ class Tab_0_FilePathSelect(TabContentsContainer):
     def read_cif_file(self)->bool:
         global fileData
         fileData.clear()
-        fileData = [["FileData_CIF"]]
+        fileData.append(["FileData_CIF"])
         cifPath = self.pick2.filePath
         if self.pick1.filePath == "":
             print("BuilderPath not enter.")
@@ -337,7 +337,7 @@ class Tab_0_FilePathSelect(TabContentsContainer):
     def read_output_file(self)->bool:
         global fileData
         fileData.clear()
-        fileData = [["FileData_Output"]]
+        fileData.append(["FileData_Output"])
         outputPath = self.pick3.filePath
         if self.pick1.filePath == "":
             print("filePath not enter.")
@@ -537,20 +537,21 @@ class Tab_1_ReadData(TabContentsContainer):
         if os.path.isfile(outputFilePath):
             outputPath = outputFilePath
         else:
-            return False
+            outputPath = outpuuuutPath
         print(f"outputPath: {outputPath}")
         global fileData
         fileData.clear()
-        fileData = [["MakeCi_output"]]
+        fileData.append(["MakeCi_output"])
         fileData.append(["fileName",self.dataName.value])
-        fileData.append(["space_group_IT_number",self.spaceGItNum])
-        fileData.append(["space_group_name_H-M_alt",self.spaceGName])
+        fileData.append(["space_group_IT_number",self.spaceGItNum.value])
+        fileData.append(["space_group_name_H-M_alt",self.spaceGName.value])
         fileData.append(["cell_length_a",self.cellLenA.value])
         fileData.append(["cell_length_b",self.cellLenB.value])
         fileData.append(["cell_length_c",self.cellLenC.value])
         fileData.append(["cell_angle_alpha",self.cellAngleA.value])
         fileData.append(["cell_angle_beta",self.cellAngleB.value])
         fileData.append(["cell_angle_gamma",self.cellAngleC.value])
+        #fileData.append(["cell_volume",self.cellVolume.value])
         for row in self.readTable.rows:
             fileData.append([])
             for rowParts in row.cells:
