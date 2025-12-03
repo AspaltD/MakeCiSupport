@@ -158,14 +158,14 @@ class FileData(List[List[str]]):
     def save_output_file(self, outputPath:Path)->bool:
         if outputPath.suffix[1:] == "": return False
         if outputPath.suffix[1:] != "txt": return False
-        if not Path.exists(outputPath): return False
+        #if not Path.exists(outputPath): return False
         if not re.match('FileData_.*', self[0][0]): return False
         with open(outputPath, mode='w') as f:
             f.write("MakeCi_output"+'\n')
             for line in self:
                 if re.match('FileData_.*', line[0]): continue
                 outputLine = '   '.join(line)
-                f.write('\n'.join(outputLine))
+                f.write(outputLine + '\n')
         return True
 
     def change_file_name(self, newFileName:str)->Optional[str]:
@@ -259,12 +259,11 @@ class Enum_BtmBtnIdx(IntEnum):
     OTHER_FUNC1 = 2
     OTHER_FUNC2 = 3
 class Btm_TabFuncBtn(ft.FilledButton):
-    def __init__(self, btmBtnClicked:ft.ControlEvent, text:str, workPlaceIdx:Enum_BtmBtnIdx):
+    def __init__(self, text:str, workPlaceIdx:Enum_BtmBtnIdx):
         super().__init__(
             width=120,
             text=text
         )
-        self.on_click = btmBtnClicked
         self.workPlaceIdx = workPlaceIdx
 
     def change_property(self, toTabIdx:Enum_TabIdx):
@@ -273,10 +272,10 @@ class Btm_TabFuncBtn(ft.FilledButton):
 class BtmBtn_EXit(Btm_TabFuncBtn):
     def __init__(self):
         super().__init__(
-            btmBtnClicked=lambda _: self.page.window.close(),
             text="ExitApp",
             workPlaceIdx=Enum_BtmBtnIdx.EXIT_APP
             )
+        self.on_click = lambda _: self.page.window.close()
 
     def change_property(self, toTabIdx: Enum_TabIdx):
         match toTabIdx.name:
@@ -286,14 +285,52 @@ class BtmBtn_EXit(Btm_TabFuncBtn):
                 self.disabled = False
 
 class BtmBtn_Next(Btm_TabFuncBtn):
-    def __init__(self, btmBtnClicked: ft.ControlEvent):
-        super().__init__(btmBtnClicked, "Next", Enum_BtmBtnIdx.NEXT_TAB)
+    def __init__(self):
+        super().__init__("Next", Enum_BtmBtnIdx.NEXT_TAB)
+
+    def change_property(self, toTabIdx: Enum_TabIdx):
+        match toTabIdx.name:
+            case 'FILE_PATH_SELECT':
+                self.text = "ReadCIF"
+                self.disabled = False
+            case 'READ_DATA':
+                self.text = "Save&Go"
+                self.disabled = False
+            case 'BUILDER_LOG':
+                self.text = "Stop"
+                self.disabled = False
+            case _:
+                self.text = "Next"
+                self.disabled = True
 class BtmBtn_Func1(Btm_TabFuncBtn):
-    def __init__(self, btmBtnClicked: ft.ControlEvent):
-        super().__init__(btmBtnClicked, "OtherFunc1", Enum_BtmBtnIdx.OTHER_FUNC1)
+    def __init__(self):
+        super().__init__("OtherFunc1", Enum_BtmBtnIdx.OTHER_FUNC1)
+
+    def change_property(self, toTabIdx: Enum_TabIdx):
+        match toTabIdx.name:
+            case 'FILE_PATH_SELECT':
+                self.text = "ReadTXT"
+                self.visible = True
+            case 'READ_DATA':
+                self.text = "Save"
+                self.visible = True
+            case _:
+                self.text = "Func1"
+                self.visible = False
+
 class BtmBtn_Func2(Btm_TabFuncBtn):
-    def __init__(self, btmBtnClicked: ft.ControlEvent):
-        super().__init__(btmBtnClicked, "OtherFunc2", Enum_BtmBtnIdx.OTHER_FUNC2)
+    def __init__(self):
+        super().__init__("OtherFunc2", Enum_BtmBtnIdx.OTHER_FUNC2)
+
+    def change_property(self, toTabIdx: Enum_TabIdx):
+        match toTabIdx.name:
+            case 'READ_DATA':
+                self.text = "Remove"
+                self.visible = True
+            case _:
+                self.text = "Func1"
+                self.visible = False
+
 
 class Btm_BtnBar(ft.Row):
     def __init__(self, tabIdx:Enum_TabIdx):
@@ -339,7 +376,7 @@ class Tab_FilePicker_Bar(ft.Row):
         self.filePickerIdx = filePickerIdx
         self.filePickeeeer = filePickers[self.filePickerIdx]
         self.filePickeeeer.on_result = self.filePicker_event
-        self.filePath:Path
+        self.filePath:Path = Path()
 
         self.pathTxtf = ft.TextField(expand=9, dense=True, on_blur=self.txtf_onBlur_event)
         self.controls = [
@@ -360,6 +397,7 @@ class Tab_FilePicker_Bar(ft.Row):
         else:
             self.pathTxtf.value = changedStr.replace(os.sep, '/').strip('"')
         value = Path(self.pathTxtf.value)
+        self.filePath = value
         if Path.exists(value):
             print(f"Selected files:name={value.name}")
             print(f"Selected files:{value.resolve()}")
@@ -398,6 +436,7 @@ class Cn_TabContainer(ft.Container):
             expand=10,
             padding=10,
             bgcolor=ft.Colors.GREY_50,
+            border=ft.border.all(1, ft.Colors.random()),
             visible=defVisible
         )
         self.tabIdx = tabIdx
@@ -511,6 +550,7 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
         )
 
         self.saveFilePicker = filePickers[Enum_FilePickerIdx.OUTPUT_SAVE]
+        self.saveFilePicker.on_result = self.pick_files_result
         self.outputPath:Path
 
     def insert_cells(self):
@@ -535,7 +575,7 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
             else:
                 atom:bool = True
                     #* 格子の基礎データ(txtfに入力されるもの)を挿入。
-                for txtf in self.cellTxtfList:
+                for txtf in self.txtfList:
                     if inList[0] == txtf.hint_text:
                         txtf.value = inList[1]
                         atom = False
@@ -574,7 +614,7 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
         for txtf in self.txtfList:
             tab1FileData.append([txtf.hint_text, txtf.value])
         for row in self.readTable.rows:
-            fileData.append([])
+            tab1FileData.append([])
             for cell in row.cells:
                 if cell.content.value == "-": pass
                 else: tab1FileData[-1].append(cell.content.value)
@@ -588,7 +628,8 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
                 self.outputPath = Path(e.path)
             else:
                 self.outputPath = Path(e.path+".txt")
-            self.commit_fileData
+            print(self.outputPath)
+            self.commit_fileData()
             fileData.save_output_file(self.outputPath)
         self.update()
 
@@ -608,18 +649,18 @@ class MakeCiSupApp(ft.Container):
                 self.cn_tab1
             ]
         )
-        #self.btmBtn0 = BtmBtn_Next()
+        self.btmBtn0 = BtmBtn_Next()
         self.btmBtn1 = BtmBtn_EXit()
-        #self.btmBtn2 = BtmBtn_Func1()
-        #self.btmBtn3 = BtmBtn_Func2()
+        self.btmBtn2 = BtmBtn_Func1()
+        self.btmBtn3 = BtmBtn_Func2()
         self.btmBtnContents = ft.Row(
             expand=1,
             alignment=ft.MainAxisAlignment.END,
             controls=[
-                #self.btmBtn3,
-                #self.btmBtn2,
+                self.btmBtn3,
+                self.btmBtn2,
                 self.btmBtn1,
-                #self.btmBtn0
+                self.btmBtn0
             ]
         )
         self.right_tabBase = ft.Column(
@@ -638,16 +679,57 @@ class MakeCiSupApp(ft.Container):
                 self.right_tabBase
             ]
         )
+        self.tab_change(Enum_TabIdx.FILE_PATH_SELECT)
 
-    def tab_change(self, toIdx:Enum_TabIdx):
+
+    def tab_change(self, toTabIdx:Enum_TabIdx):
         for tab in self.cn_tabContents.controls:
-            if tab.tabIdx == toIdx: tab.visible = True
+            if tab.tabIdx == toTabIdx: tab.visible = True
             elif tab.tabIdx == 99: pass
             else: tab.visible = False
+        for btn in self.btmBtnContents.controls:
+            btn.change_property(toTabIdx)
+        self.btmBtn_func_change(toTabIdx)
+
+    def btmBtn_func_change(self, toTabIdx:Enum_TabIdx):
+        match toTabIdx.name:
+            case 'FILE_PATH_SELECT':
+                self.btmBtn0.on_click = self.btmBtn_tab0_readCIF_event
+                self.btmBtn2.on_click = self.btmBtn_tab0_readTXT_event
+            case 'READ_DATA':
+                self.btmBtn0.on_click = self.btmBtn_tab1_save_go_event
+                self.btmBtn2.on_click = self.btmBtn_tab1_save_event
+            case _:
+                self.btmBtn0.on_click = None
+                self.btmBtn2.on_click = None
+                self.btmBtn3.on_click = None
 
     def left_btn_event(self, e):
         self.tab_change(e.control.tabIdx)
         self.update()
+    
+    def btmBtn_tab0_readCIF_event(self, e):
+        if self.cn_tab0.pickBuilder.check_true_path() is False: return
+        if self.cn_tab0.pickCIF.check_true_path() is False: return
+        if fileData.read_cif_file(self.cn_tab0.pickCIF.get_path()):
+            self.tab_change(Enum_TabIdx.READ_DATA)
+            self.cn_tab1.insert_cells()
+        self.update()
+    def btmBtn_tab0_readTXT_event(self, e):
+        if self.cn_tab0.pickBuilder.check_true_path() is False: return
+        if self.cn_tab0.pickOutput.check_true_path() is False: return
+        if fileData.read_output_file(self.cn_tab0.pickOutput.get_path()):
+            self.tab_change(Enum_TabIdx.READ_DATA)
+            self.cn_tab1.insert_cells()
+        self.update()
+    
+    def btmBtn_tab1_save_go_event(self,e):
+        if not re.match('FileData_.*', fileData[0][0]): return
+        self.cn_tab1.commit_fileData()
+    def btmBtn_tab1_save_event(self, e):
+        if not re.match('FileData_.*', fileData[0][0]): return
+        self.cn_tab1.commit_fileData()
+        self.cn_tab1.saveFilePicker.save_file(allowed_extensions=['txt'])
 
 class ExitConfirmDialog(ft.AlertDialog):
     def __init__(self):
