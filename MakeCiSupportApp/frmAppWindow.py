@@ -392,7 +392,7 @@ class Tab0_FPBar_Output(Tab_FilePicker_Bar):
         super().__init__(filePickerIdx=Enum_FilePickerIdx.OUTPUT_PICK)
         self.pathTxtf.hint_text = "Output File Path"
 
-#* タブのコンテナ。これらの子どもは容器としての役割のみで関数は持たない(予定)
+#* タブのコンテナ。
 class Cn_TabContainer(ft.Container):
     def __init__(self, tabIdx:Enum_TabIdx, defVisible:bool):
         super().__init__(
@@ -423,7 +423,7 @@ class Cn_Tab0_FilePathSelect(Cn_TabContainer):
             ft.Text("Output File Path"),
             self.pickOutput
         ])
-
+        #! ここで設定ファイルにBuilderのデータがあれば呼び出している。将来的には関数として独立させたい。
         if "builder_path" in settingData:
             self.pickBuilder.path_change(settingData['builder_path'])
 
@@ -431,7 +431,6 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
     def __init__(self):
         super().__init__(tabIdx=Enum_TabIdx.READ_DATA, defVisible=False)
 
-        self._tab1FileData = FileData()
         #* 格子定数用
             #*個別データ
         self.dataName = ft.TextField(expand=1,dense=True,label="Data_Name",hint_text="fileName")
@@ -512,7 +511,87 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
             ]
         )
 
+        self.saveFilePicker = filePickers[Enum_FilePickerIdx.OUTPUT_SAVE]
+        self.outputPath:Path
 
+    def insert_cells(self):
+        # txtf_idx -> 0:fileName, 1:SpaceGITNum, 2:SpaceGName,
+        # 3:CellLen_a, 4:CellLen_b, 5:CellLen_c,
+        # 6:CellAngle_a, 7:CellAngle_b, 8:CellAngle_c, 9:CellVolume
+        #* read_row -> data = インデックス番号
+        self.readTable.rows.clear()
+        read_row:ft.DataRow
+        i:int = -1
+        n:int = 0
+        for inList in fileData:
+            i += 1
+            if i == 0:
+                if re.match('FileData_.*',inList[0]):
+                    continue
+                else:
+                    return
+            elif i == 400:
+                print("list length is over(400)")
+                return
+            else:
+                atom:bool = True
+                    #* 格子の基礎データ(txtfに入力されるもの)を挿入。
+                for txtf in self.cellTxtfList:
+                    if inList[0] == txtf.hint_text:
+                        txtf.value = inList[1]
+                        atom = False
+                    #* 原子座標をデータテーブルに入力。
+                if atom and re.match('[A-Z][a-z]{0,1}', inList[0]):
+                    read_row = ft.DataRow(cells=[],data=n,on_select_changed=self.row_CBox_clicked)
+                    for inData in inList:
+                        read_row.cells.append(ft.DataCell(ft.Text(value=inData)))
+                    if len(inList) <= 6:
+                        read_row.cells.append(ft.DataCell(ft.Text("-")))
+                    self.readTable.rows.append(read_row)
+                    n += 1
+                else:
+                    pass
+
+    #* 行をクリックしたときに削除リストに追加したり消したりするイベント。
+    #* 実際に行を消すイベントは本体にある。
+    def row_CBox_clicked(self,e:ft.ControlEvent):
+        if e.control.selected:
+            e.control.selected = False
+            for idx in self.selectedRows:
+                if idx == e.control.data:
+                    self.selectedRows.remove(idx)
+                else:
+                    pass
+        else:
+            e.control.selected = True
+            self.selectedRows.append(e.control.data)
+        print(self.selectedRows)
+        self.update()
+
+    def commit_fileData(self):
+        tab1FileData:FileData = FileData()
+        tab1FileData.clear()
+        tab1FileData.append(["FileData_commit"])
+        for txtf in self.txtfList:
+            tab1FileData.append([txtf.hint_text, txtf.value])
+        for row in self.readTable.rows:
+            fileData.append([])
+            for cell in row.cells:
+                if cell.content.value == "-": pass
+                else: tab1FileData[-1].append(cell.content.value)
+        global fileData
+        fileData = copy.deepcopy(tab1FileData)
+        fileData.save_outpuuuut_file()
+
+    def pick_files_result(self, e:ft.FilePickerResultEvent):
+        if e.path:
+            if re.match('.*txt',e.path):
+                self.outputPath = Path(e.path)
+            else:
+                self.outputPath = Path(e.path+".txt")
+            self.commit_fileData
+            fileData.save_output_file(self.outputPath)
+        self.update()
 
 
 class MakeCiSupApp(ft.Container):
