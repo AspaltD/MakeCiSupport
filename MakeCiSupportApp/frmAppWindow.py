@@ -4,34 +4,51 @@ import re
 from typing import Final, Dict, List, Optional
 from enum import Enum, IntEnum
 import os
+import copy
 
 filePickers: Dict[Enum_FilePickerIdx, ft.FilePicker]
 fileData:FileData
 settingData: Dict[str, str] = {}
 OUTPUUUUT_PATH:Path = Path('MakeCiSupportApp/outpuuuut.txt')
 
+class Enum_CellDataLabel(IntEnum):
+    STATE = 0
+    FILE_NAME = 1
+    SPACE_GROUP_IT_NUM = 2
+    SPACE_GROUP_NAME = 3
+    CELL_LENGTH = 4
+    CELL_ANGLE = 5
+    CELL_VOLUME = 6
+    ATOM = 7
+
+    def get_label_str(self)->str:
+        match self.name:
+            case 'STATE': return 'MakeCi_'
+            case 'FILE_NAME': return 'fileName'
+            case 'SPACE_GROUP_IT_NUM': return 'space_group_IT_number'
+            case 'SPACE_GROUP_NAME': return 'space_group_name_H-M_alt'
+            case 'CELL_LENGTH': return 'cell_length_'
+            case 'CELL_ANGLE': return 'cell_angle_'
+            case 'CELL_VOLUME': return 'cell_volume'
+            case 'ATOM': return ''
+
+
+
 class FileData(List[List[str]]):
     def __init__(self):
-        self = [["Not Enter Data"]]
+        self = ["initialized"]
 
-    def printData(self):
+    def print_data(self):
         i = -1
-        print("idx: row_data")
-        for row in self:
+        print("idx: value")
+        for value in self:
             i += 1
-            print(f'{i}: {row}')
-
-    def save_outpuuuut_file(self):
-        outputLines:List[str] = ["MakeCi_outpuuuut"]
-        for line in self:
-            if re.match('FileData_.*', line[0]): continue
-            outputLines.append('   '.join(line))
-        with open(OUTPUUUUT_PATH, mode='w') as f:
-            f.write('\n'.join(outputLines))
+            print(f'{i}: {value}')
 
     def read_cif_file(self, cifPath:Path)->bool:
         if cifPath.suffix[1:] == "": return False
         if cifPath.suffix[1:] != "cif": return False
+        if not Path.is_file(cifPath): return False
         self.clear()
         self.append(["FileData_CIF"])
         i:int = -1
@@ -125,10 +142,43 @@ class FileData(List[List[str]]):
                 for data in lineP:
                     self[-1].append(data)
             print(f"end_line: {i}")
-        self.printData()
+        self.print_data()
         self.save_outpuuuut_file()
         return True
 
+    def save_outpuuuut_file(self):
+        outputLines:List[str] = ["MakeCi_output"]
+        if not re.match('FileData_.*', self[0][0]): return
+        for line in self:   #! writeメソッドをforの内側に入れる？
+            if re.match('FileData_.*', line[0]): continue
+            outputLines.append('   '.join(line))
+        with open(OUTPUUUUT_PATH, mode='w') as f:
+            f.write('\n'.join(outputLines))
+
+    def save_output_file(self, outputPath:Path)->bool:
+        if outputPath.suffix[1:] == "": return False
+        if outputPath.suffix[1:] != "txt": return False
+        if not Path.exists(outputPath): return False
+        if not re.match('FileData_.*', self[0][0]): return False
+        with open(outputPath, mode='w') as f:
+            f.write("MakeCi_output"+'\n')
+            for line in self:
+                if re.match('FileData_.*', line[0]): continue
+                outputLine = '   '.join(line)
+                f.write('\n'.join(outputLine))
+        return True
+
+    def change_file_name(self, newFileName:str)->Optional[str]:
+        if '\\' in newFileName: return None
+        if '.' in newFileName: return None
+        if ' ' in newFileName: return None
+        if newFileName == "": return None
+        for value in self:
+            if value[0] == "fileName":
+                lastName = value[1]
+                value[1] = newFileName
+                return lastName
+        return None
 fileData = FileData()
 
 class Enum_TabIdx(IntEnum):
@@ -302,6 +352,9 @@ class Tab_FilePicker_Bar(ft.Row):
             )
         ]
 
+    def get_path(self)->Optional[Path]:
+        return Path(self.filePath)
+
     def path_change(self, changedStr:Optional[str]=None):
         if changedStr is None:
             self.pathTxtf.value = ""
@@ -335,7 +388,7 @@ class Tab0_FPBar_Output(Tab_FilePicker_Bar):
         super().__init__(filePickerIdx=Enum_FilePickerIdx.OUTPUT_PICK)
         self.pathTxtf.hint_text = "Output File Path"
 
-
+#* タブのコンテナ。これらの子どもは容器としての役割のみで関数は持たない(予定)
 class Cn_TabContainer(ft.Container):
     def __init__(self, tabIdx:Enum_TabIdx, defVisible:bool):
         super().__init__(
@@ -370,9 +423,90 @@ class Cn_Tab0_FilePathSelect(Cn_TabContainer):
         if "builder_path" in settingData:
             self.pickBuilder.path_change(settingData['builder_path'])
 
-    def read_cif_file(self):
-        global fileData
-        fileData.clear()
+class Cn_Tab1_ReadData(Cn_TabContainer):
+    def __init__(self):
+        super().__init__(tabIdx=Enum_TabIdx.READ_DATA, defVisible=False)
+
+        self._tab1FileData = FileData()
+        #* 格子定数用
+            #*個別データ
+        self.dataName = ft.TextField(expand=1,dense=True,label="Data_Name",hint_text="fileName")
+        self.spaceGItNum = ft.TextField(expand=1,dense=True,label="SpaceG_IT_Num",hint_text="space_group_IT_number",read_only=True)
+        self.spaceGName = ft.TextField(expand=1,dense=True, label="SpaceG_Name",hint_text="space_group_name_H-M_alt",read_only=True)
+        self.cellLenA = ft.TextField(expand=1,dense=True,label="Cell_Length_a",hint_text="cell_length_a",read_only=True)
+        self.cellLenB = ft.TextField(expand=1,dense=True,label="Cell_Length_b",hint_text="cell_length_b",read_only=True)
+        self.cellLenC = ft.TextField(expand=1,dense=True,label="Cell_Length_c",hint_text="cell_length_c",read_only=True)
+        self.cellAngleA = ft.TextField(expand=1,dense=True,label="Cell_Angle_alpha",hint_text="cell_angle_alpha",read_only=True)
+        self.cellAngleB = ft.TextField(expand=1,dense=True,label="Cell_Angle_beta",hint_text="cell_angle_beta",read_only=True)
+        self.cellAngleC = ft.TextField(expand=1,dense=True,label="Cell_Angle_gamma",hint_text="cell_angle_gamma",read_only=True)
+        self.cellVolume = ft.TextField(expand=1,dense=True,label="Cell_Volume",hint_text="cell_volume",read_only=True)
+        self.txtfList:List[ft.TextField] = [
+            self.dataName, self.spaceGItNum, self.spaceGName,
+            self.cellLenA, self.cellLenB, self.cellLenC,
+            self.cellAngleA, self.cellAngleB, self.cellAngleC,
+            self.cellVolume
+        ]
+            #* 格子定数コンテンツ全体
+        self.cellDataGroup = ft.Column(
+            expand=2,
+            controls=[
+                self.dataName,
+                ft.Row(
+                    spacing=0,
+                    controls=[
+                        self.cellLenA,
+                        self.cellLenB,
+                        self.cellLenC
+                    ]
+                ),
+                ft.Row(
+                    spacing=0,
+                    controls=[
+                        self.cellAngleA,
+                        self.cellAngleB,
+                        self.cellAngleC
+                    ]
+                ),
+                ft.Row(
+                    spacing=0,
+                    controls=[
+                        self.spaceGItNum,
+                        self.spaceGName,
+                        self.cellVolume
+                    ]
+                )
+            ]
+        )
+        #* 原子座標の表関連
+        self.selectedRows:List[int] = []
+        self.readTable = ft.DataTable(
+            border = ft.border.all(1, ft.Colors.BLACK),
+            show_checkbox_column=True,
+            column_spacing=24,
+            columns=[
+                ft.DataColumn(ft.Text("Atom")),
+                ft.DataColumn(ft.Text(" Idx1 "),heading_row_alignment=ft.MainAxisAlignment.CENTER,numeric=True),
+                ft.DataColumn(ft.Text(" Idx2 "),heading_row_alignment=ft.MainAxisAlignment.CENTER,numeric=True),
+                ft.DataColumn(ft.Text("  X  "),heading_row_alignment=ft.MainAxisAlignment.CENTER,numeric=True),
+                ft.DataColumn(ft.Text("  Y  "),heading_row_alignment=ft.MainAxisAlignment.CENTER,numeric=True),
+                ft.DataColumn(ft.Text("  Z  "),heading_row_alignment=ft.MainAxisAlignment.CENTER,numeric=True),
+                ft.DataColumn(ft.Text("Occ."),numeric=True)
+            ],
+            rows=[]
+        )
+
+        self.content = ft.Column(
+            controls=[
+                self.cellDataGroup,
+                ft.Column(
+                    expand=3,
+                    controls=[
+                        self.readTable
+                    ],
+                    scroll=ft.ScrollMode.ALWAYS
+                )
+            ]
+        )
 
 
 def main(page: ft.Page):
@@ -380,7 +514,7 @@ def main(page: ft.Page):
     page.window.width = 800
     page.window.height = 605
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-    page.update()
+    #page.update()
 
     global filePickers
     for name in Enum_FilePickerIdx:
@@ -389,11 +523,35 @@ def main(page: ft.Page):
     
     global settingData
     settingDataPath = Path('MakeCiSupportApp/makeci_setting.txt')
-#    if Path.is_file(settingDataPath):
-#        with open(settingDataPath) as f:
-#            for line in f:
+    if Path.is_file(settingDataPath):
+        with open(settingDataPath) as f:
+            for lineS in f:
+                lineP = lineS.rstrip().split(sep=';')
+                if len(lineP) <= 1: continue
+                lineP[1] = ';'.join(lineP[1:])
+                settingData[lineP[0]] = lineP[1]
+        print(settingData)
+    else:
+        with open(settingDataPath) as f:
+            f.write("makeci_setting")
+            f.write("app_ver;beta 0.1")
+    
+    #! ここにメインフレームのｲﾝｽﾀﾝｽ化
 
+    def window_close_event(e):
+        if e.data == "close":
+            pass
+            page.update()
+    
+    page.window.prevent_close = True
+    page.window.on_event = window_close_event
 
-fileData.read_cif_file(Path("C:/Users/asufa/OneDrive/デスクトップ/1006_1h/MVAuNiUV_autored.cif"))
-fileData.printData()
+    #! ここにメインフレームadd
+    page.window.center()
+    page.update()
+
+if __name__ == '__main__':
+    ft.app(target=main)
+    #fileData.read_cif_file(Path("C:/Users/asufa/OneDrive/デスクトップ/1006_1h/MVAuNiUV_autored.cif"))
+    #fileData.printData()
 
