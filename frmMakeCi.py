@@ -65,7 +65,7 @@ class TabChangeBar(ft.Container):
         self.expand = 1
         self.bgcolor = ft.Colors.GREY_300
 
-        self.tabContents = ft.Column(
+        self.content = ft.Column(
             height=520,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             spacing=0,
@@ -80,7 +80,7 @@ class TabChangeBar(ft.Container):
                 NavButton(3, navBtnClicked)
             ]
         )
-        self.content = self.tabContents
+        #self.content = self.tabContents
 
 #*タブ下部に配置される，タブの個別の機能実装用のボタン。
 #* このボタンたちの配置はタブから独立していて，本体コンテナの直接の管理下。

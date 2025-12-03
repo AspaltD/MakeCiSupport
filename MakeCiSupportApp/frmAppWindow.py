@@ -6,7 +6,7 @@ from enum import Enum, IntEnum
 import os
 import copy
 
-filePickers: Dict[Enum_FilePickerIdx, ft.FilePicker]
+filePickers: Dict[Enum_FilePickerIdx, ft.FilePicker] = {}
 fileData:FileData
 settingData: Dict[str, str] = {}
 OUTPUUUUT_PATH:Path = Path('MakeCiSupportApp/outpuuuut.txt')
@@ -210,10 +210,11 @@ class Left_TabBtn(ft.FilledButton):
         )
         self.tabIdx = tabIdx
         self.on_click = leftBtnClicked
+        self.text = text
 
 class Left_TabBtn_Tab0(Left_TabBtn):
     def __init__(self, leftBtnClicked:ft.ControlEvent):
-        super().__init__(Enum_TabIdx.FILE_PATH_SELECT, leftBtnClicked, "ファイル設定")
+        super().__init__(tabIdx=Enum_TabIdx.FILE_PATH_SELECT, leftBtnClicked=leftBtnClicked, text="ファイル設定")
 class Left_TabBtn_Tab1(Left_TabBtn):
     def __init__(self, leftBtnClicked:ft.ControlEvent):
         super().__init__(Enum_TabIdx.READ_DATA, leftBtnClicked, "読取結果")
@@ -266,6 +267,9 @@ class Btm_TabFuncBtn(ft.FilledButton):
         self.on_click = btmBtnClicked
         self.workPlaceIdx = workPlaceIdx
 
+    def change_property(self, toTabIdx:Enum_TabIdx):
+        self.disabled = True
+
 class BtmBtn_EXit(Btm_TabFuncBtn):
     def __init__(self):
         super().__init__(
@@ -274,27 +278,22 @@ class BtmBtn_EXit(Btm_TabFuncBtn):
             workPlaceIdx=Enum_BtmBtnIdx.EXIT_APP
             )
 
-class BtmBtn_Tab0_ReadCIF(Btm_TabFuncBtn):
-    def __init__(self, btmBtnClicked: ft.ControlEvent):
-        super().__init__(btmBtnClicked, "ReadCif", Enum_BtmBtnIdx.NEXT_TAB)
-class BtmBtn_Tab0_ReadTXT(Btm_TabFuncBtn):
-    def __init__(self, btmBtnClicked: ft.ControlEvent):
-        super().__init__(btmBtnClicked, "ReadTXT", Enum_BtmBtnIdx.OTHER_FUNC1)
-class BtmBtn_Tab1_SaveRun(Btm_TabFuncBtn):
-    def __init__(self, btmBtnClicked: ft.ControlEvent):
-        super().__init__(btmBtnClicked, "Save&Run", Enum_BtmBtnIdx.NEXT_TAB)
-class BtmBtn_Tab1_Save(Btm_TabFuncBtn):
-    def __init__(self, btmBtnClicked: ft.ControlEvent):
-        super().__init__(btmBtnClicked, "Save", Enum_BtmBtnIdx.OTHER_FUNC1)
-class BtmBtn_Tab1_Remove(Btm_TabFuncBtn):
-    def __init__(self, btmBtnClicked: ft.ControlEvent):
-        super().__init__(btmBtnClicked, "Remove", Enum_BtmBtnIdx.OTHER_FUNC2)
-class BtmBtn_Tab2_Next(Btm_TabFuncBtn):
+    def change_property(self, toTabIdx: Enum_TabIdx):
+        match toTabIdx.name:
+            case 'BUILDER_LOG':
+                self.disabled = True
+            case _:
+                self.disabled = False
+
+class BtmBtn_Next(Btm_TabFuncBtn):
     def __init__(self, btmBtnClicked: ft.ControlEvent):
         super().__init__(btmBtnClicked, "Next", Enum_BtmBtnIdx.NEXT_TAB)
-class BtmBtn_Tab2_Stop(Btm_TabFuncBtn):
+class BtmBtn_Func1(Btm_TabFuncBtn):
     def __init__(self, btmBtnClicked: ft.ControlEvent):
-        super().__init__(btmBtnClicked, "Stop", Enum_BtmBtnIdx.OTHER_FUNC1)
+        super().__init__(btmBtnClicked, "OtherFunc1", Enum_BtmBtnIdx.OTHER_FUNC1)
+class BtmBtn_Func2(Btm_TabFuncBtn):
+    def __init__(self, btmBtnClicked: ft.ControlEvent):
+        super().__init__(btmBtnClicked, "OtherFunc2", Enum_BtmBtnIdx.OTHER_FUNC2)
 
 class Btm_BtnBar(ft.Row):
     def __init__(self, tabIdx:Enum_TabIdx):
@@ -579,7 +578,7 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
             for cell in row.cells:
                 if cell.content.value == "-": pass
                 else: tab1FileData[-1].append(cell.content.value)
-        global fileData
+        #global fileData
         fileData = copy.deepcopy(tab1FileData)
         fileData.save_outpuuuut_file()
 
@@ -597,7 +596,6 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
 class MakeCiSupApp(ft.Container):
     def __init__(self):
         super().__init__()
-
         self.left_tabChangeBar = Left_TabChangeBar(leftBtnClicked=self.left_btn_event)
         self.cn_tab99 = Cn_Tab99_PlaceHoldeeeer()
         self.cn_tab0 = Cn_Tab0_FilePathSelect()
@@ -610,6 +608,36 @@ class MakeCiSupApp(ft.Container):
                 self.cn_tab1
             ]
         )
+        #self.btmBtn0 = BtmBtn_Next()
+        self.btmBtn1 = BtmBtn_EXit()
+        #self.btmBtn2 = BtmBtn_Func1()
+        #self.btmBtn3 = BtmBtn_Func2()
+        self.btmBtnContents = ft.Row(
+            expand=1,
+            alignment=ft.MainAxisAlignment.END,
+            controls=[
+                #self.btmBtn3,
+                #self.btmBtn2,
+                self.btmBtn1,
+                #self.btmBtn0
+            ]
+        )
+        self.right_tabBase = ft.Column(
+            height=540,
+            expand=3,
+            spacing=2,
+            controls=[
+                self.cn_tabContents,
+                self.btmBtnContents
+            ]
+        )
+
+        self.content = ft.Row(
+            controls=[
+                self.left_tabChangeBar,
+                self.right_tabBase
+            ]
+        )
 
     def tab_change(self, toIdx:Enum_TabIdx):
         for tab in self.cn_tabContents.controls:
@@ -620,22 +648,23 @@ class MakeCiSupApp(ft.Container):
     def left_btn_event(self, e):
         self.tab_change(e.control.tabIdx)
         self.update()
-    
-    def btm_tab0_readCIF_event(self, e):
-        global fileData
-        if not self.cn_tab0.pickBuilder.check_true_path(): return
-        if not self.cn_tab0.pickCIF.check_true_path(): return
-        fileData.read_cif_file(self.cn_tab0.pickCIF.filePath)
-        self.tab_change(Enum_TabIdx.READ_DATA)
-        self.update()
-    def btm_tab0_readOutput_event(self,e):
-        #global fileData
-        if not self.cn_tab0.pickBuilder.check_true_path(): return
-        if not self.cn_tab0.pickOutput.check_true_path(): return
-        fileData.read_output_file(self.cn_tab0.pickOutput.filePath)
-        self.tab_change(Enum_TabIdx.READ_DATA)
-        self.update()
-    
+
+class ExitConfirmDialog(ft.AlertDialog):
+    def __init__(self):
+        super().__init__()
+        self.modal = True
+        self.title = ft.Text("終了確認")
+        self.content = ft.Text("アプリを終了しますか？")
+        self.actions = [
+            ft.TextButton("Yes", on_click=self.yes_clicked),
+            ft.TextButton("No", on_click=lambda e: self.page.close(self))
+        ]
+        self.actions_alignment = ft.MainAxisAlignment.END
+
+    def yes_clicked(self, e):
+        self.page.close(self)
+        #!ここに終了時のsave動作などを追加
+        self.page.window.destroy()
 
 def main(page: ft.Page):
     page.title = "Make Ci Support App"
@@ -664,17 +693,17 @@ def main(page: ft.Page):
             f.write("makeci_setting")
             f.write("app_ver;beta 0.1")
     
-    #! ここにメインフレームのｲﾝｽﾀﾝｽ化
+    makeCiSup = MakeCiSupApp()
 
     def window_close_event(e):
         if e.data == "close":
-            pass
+            page.open(ExitConfirmDialog())
             page.update()
     
     page.window.prevent_close = True
     page.window.on_event = window_close_event
 
-    #! ここにメインフレームadd
+    page.add(makeCiSup)
     page.window.center()
     page.update()
 

@@ -1,0 +1,3 @@
+makeci_setting
+app_ver;beta 0.1
+builder_path;C:/Program Files (x86)/PrimeColor Software/Caesar 1.0/bin/builder.exe
