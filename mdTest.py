@@ -5,6 +5,7 @@ from typing import List
 import json
 import pprint
 import re
+from pathlib import Path
 
 testPath = "C:/Users/asufa/OneDrive/デスクトップ/1006_1h/MVAuNiUV_autored.cif"
 testPath2 = "D:/2_Saturn/0829_n/MVAuNi_autored.cif"
@@ -292,6 +293,9 @@ def re_test():
     
     for n in testData:
         print(n)
+    
+def path_test():
+        print(Path("a").name == "a")
 
 
 if __name__ == '__main__':
@@ -300,4 +304,5 @@ if __name__ == '__main__':
     #makeListTest()
     #LoggingTest()
     #LoggingTest2()
-    re_test()
+    #re_test()
+    path_test()

@@ -208,7 +208,7 @@ class Left_TabBtn(ft.FilledButton):
             width=150,
             height=40
         )
-        self.workIdx = tabIdx
+        self.tabIdx = tabIdx
         self.on_click = leftBtnClicked
 
 class Left_TabBtn_Tab0(Left_TabBtn):
@@ -374,6 +374,10 @@ class Tab_FilePicker_Bar(ft.Row):
         if e.files:
             self.path_change(e.files[0].path)
         self.update()
+    def check_true_path(self)->bool:
+        if not Path.exists(self.filePath): return False
+        if self.filePath.name == "": return False
+        return True
 
 class Tab0_FPBar_Builder(Tab_FilePicker_Bar):
     def __init__(self):
@@ -508,6 +512,51 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
             ]
         )
 
+
+
+
+class MakeCiSupApp(ft.Container):
+    def __init__(self):
+        super().__init__()
+
+        self.left_tabChangeBar = Left_TabChangeBar(leftBtnClicked=self.left_btn_event)
+        self.cn_tab99 = Cn_Tab99_PlaceHoldeeeer()
+        self.cn_tab0 = Cn_Tab0_FilePathSelect()
+        self.cn_tab1 = Cn_Tab1_ReadData()
+        self.cn_tabContents = ft.Stack(
+            expand=10,
+            controls=[
+                self.cn_tab99,
+                self.cn_tab0,
+                self.cn_tab1
+            ]
+        )
+
+    def tab_change(self, toIdx:Enum_TabIdx):
+        for tab in self.cn_tabContents.controls:
+            if tab.tabIdx == toIdx: tab.visible = True
+            elif tab.tabIdx == 99: pass
+            else: tab.visible = False
+
+    def left_btn_event(self, e):
+        self.tab_change(e.control.tabIdx)
+        self.update()
+    
+    def btm_tab0_readCIF_event(self, e):
+        global fileData
+        if not self.cn_tab0.pickBuilder.check_true_path(): return
+        if not self.cn_tab0.pickCIF.check_true_path(): return
+        fileData.read_cif_file(self.cn_tab0.pickCIF.filePath)
+        self.tab_change(Enum_TabIdx.READ_DATA)
+        self.update()
+    def btm_tab0_readOutput_event(self,e):
+        #global fileData
+        if not self.cn_tab0.pickBuilder.check_true_path(): return
+        if not self.cn_tab0.pickOutput.check_true_path(): return
+        fileData.read_output_file(self.cn_tab0.pickOutput.filePath)
+        self.tab_change(Enum_TabIdx.READ_DATA)
+        self.update()
+    
 
 def main(page: ft.Page):
     page.title = "Make Ci Support App"
