@@ -649,18 +649,18 @@ class MakeCiSupApp(ft.Container):
                 self.cn_tab1
             ]
         )
-        self.btmBtn0 = BtmBtn_Next()
-        self.btmBtn1 = BtmBtn_EXit()
-        self.btmBtn2 = BtmBtn_Func1()
-        self.btmBtn3 = BtmBtn_Func2()
+        self.btmBtn_Next = BtmBtn_Next()
+        self.btmBtn_Exit = BtmBtn_EXit()
+        self.btmBtn_Func1 = BtmBtn_Func1()
+        self.btmBtn_Func2 = BtmBtn_Func2()
         self.btmBtnContents = ft.Row(
             expand=1,
             alignment=ft.MainAxisAlignment.END,
             controls=[
-                self.btmBtn3,
-                self.btmBtn2,
-                self.btmBtn1,
-                self.btmBtn0
+                self.btmBtn_Func2,
+                self.btmBtn_Func1,
+                self.btmBtn_Exit,
+                self.btmBtn_Next
             ]
         )
         self.right_tabBase = ft.Column(
@@ -694,15 +694,15 @@ class MakeCiSupApp(ft.Container):
     def btmBtn_func_change(self, toTabIdx:Enum_TabIdx):
         match toTabIdx.name:
             case 'FILE_PATH_SELECT':
-                self.btmBtn0.on_click = self.btmBtn_tab0_readCIF_event
-                self.btmBtn2.on_click = self.btmBtn_tab0_readTXT_event
+                self.btmBtn_Next.on_click = self.btmBtn_tab0_readCIF_event
+                self.btmBtn_Func1.on_click = self.btmBtn_tab0_readTXT_event
             case 'READ_DATA':
-                self.btmBtn0.on_click = self.btmBtn_tab1_save_go_event
-                self.btmBtn2.on_click = self.btmBtn_tab1_save_event
+                self.btmBtn_Next.on_click = self.btmBtn_tab1_save_go_event
+                self.btmBtn_Func1.on_click = self.btmBtn_tab1_save_event
             case _:
-                self.btmBtn0.on_click = None
-                self.btmBtn2.on_click = None
-                self.btmBtn3.on_click = None
+                self.btmBtn_Next.on_click = None
+                self.btmBtn_Func1.on_click = None
+                self.btmBtn_Func2.on_click = None
 
     def left_btn_event(self, e):
         self.tab_change(e.control.tabIdx)
@@ -730,6 +730,9 @@ class MakeCiSupApp(ft.Container):
         if not re.match('FileData_.*', fileData[0][0]): return
         self.cn_tab1.commit_fileData()
         self.cn_tab1.saveFilePicker.save_file(allowed_extensions=['txt'])
+    
+    def btmBtn_tab1_remove_event(self, e):
+        pass
 
 class ExitConfirmDialog(ft.AlertDialog):
     def __init__(self):
