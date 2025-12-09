@@ -465,22 +465,33 @@ class Cn_Tab0_FilePathSelect(Cn_TabContainer):
         if "builder_path" in settingData:
             self.pickBuilder.path_change(settingData['builder_path'])
 
+class Tab1_TxtF_CellData(ft.TextField):
+    def __init__(self, label:str, hint_text:str, read_only:bool=True, txtfIdx:int):
+        super().__init__(
+            expand=1,
+            dense=True,
+            label=label,
+            hint_text=hint_text,
+            read_only=read_only
+        )
+        self.txtfIdx = txtfIdx
+
 class Cn_Tab1_ReadData(Cn_TabContainer):
     def __init__(self):
         super().__init__(tabIdx=Enum_TabIdx.READ_DATA, defVisible=False)
 
         #* 格子定数用
             #*個別データ
-        self.dataName = ft.TextField(expand=1,dense=True,label="Data_Name",hint_text="fileName")
-        self.spaceGItNum = ft.TextField(expand=1,dense=True,label="SpaceG_IT_Num",hint_text="space_group_IT_number",read_only=True)
-        self.spaceGName = ft.TextField(expand=1,dense=True, label="SpaceG_Name",hint_text="space_group_name_H-M_alt",read_only=True)
-        self.cellLenA = ft.TextField(expand=1,dense=True,label="Cell_Length_a",hint_text="cell_length_a",read_only=True)
-        self.cellLenB = ft.TextField(expand=1,dense=True,label="Cell_Length_b",hint_text="cell_length_b",read_only=True)
-        self.cellLenC = ft.TextField(expand=1,dense=True,label="Cell_Length_c",hint_text="cell_length_c",read_only=True)
-        self.cellAngleA = ft.TextField(expand=1,dense=True,label="Cell_Angle_alpha",hint_text="cell_angle_alpha",read_only=True)
-        self.cellAngleB = ft.TextField(expand=1,dense=True,label="Cell_Angle_beta",hint_text="cell_angle_beta",read_only=True)
-        self.cellAngleC = ft.TextField(expand=1,dense=True,label="Cell_Angle_gamma",hint_text="cell_angle_gamma",read_only=True)
-        self.cellVolume = ft.TextField(expand=1,dense=True,label="Cell_Volume",hint_text="cell_volume",read_only=True)
+        self.dataName = Tab1_TxtF_CellData(label="Data_Name", hint_text="fileName", read_only=False, txtfIdx=0)
+        self.spaceGItNum = Tab1_TxtF_CellData(label="SpaceG_IT_Num", hint_text="space_group_IT_number", txtfIdx=1)
+        self.spaceGName = Tab1_TxtF_CellData(label="SpaceG_Name", hint_text="space_group_name_H-M_alt", txtfIdx=2)
+        self.cellLenA = Tab1_TxtF_CellData(label="Cell_Length_a", hint_text="cell_length_a", txtfIdx=3)
+        self.cellLenB = Tab1_TxtF_CellData(label="Cell_Length_b", hint_text="cell_length_b", txtfIdx=4)
+        self.cellLenC = Tab1_TxtF_CellData(label="Cell_Length_c", hint_text="cell_length_c", txtfIdx=5)
+        self.cellAngleA = Tab1_TxtF_CellData(label="Cell_Angle_alpha", hint_text="cell_angle_alpha", txtfIdx=6)
+        self.cellAngleB = Tab1_TxtF_CellData(label="Cell_Angle_beta", hint_text="cell_angle_beta", txtfIdx=7)
+        self.cellAngleC = Tab1_TxtF_CellData(label="Cell_Angle_gamma", hint_text="cell_angle_gamma", txtfIdx=8)
+        self.cellVolume = Tab1_TxtF_CellData(label="Cell_Volume", hint_text="cell_volume", txtfIdx=9)
         self.txtfList:List[ft.TextField] = [
             self.dataName, self.spaceGItNum, self.spaceGName,
             self.cellLenA, self.cellLenB, self.cellLenC,
@@ -494,27 +505,15 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
                 self.dataName,
                 ft.Row(
                     spacing=0,
-                    controls=[
-                        self.cellLenA,
-                        self.cellLenB,
-                        self.cellLenC
-                    ]
+                    controls=[self.cellLenA, self.cellLenB, self.cellLenC]
                 ),
                 ft.Row(
                     spacing=0,
-                    controls=[
-                        self.cellAngleA,
-                        self.cellAngleB,
-                        self.cellAngleC
-                    ]
+                    controls=[self.cellAngleA, self.cellAngleB, self.cellAngleC]
                 ),
                 ft.Row(
                     spacing=0,
-                    controls=[
-                        self.spaceGItNum,
-                        self.spaceGName,
-                        self.cellVolume
-                    ]
+                    controls=[self.spaceGItNum, self.spaceGName, self.cellVolume]
                 )
             ]
         )
@@ -536,6 +535,7 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
             rows=[]
         )
 
+        #* コンテンツの配置
         self.content = ft.Column(
             controls=[
                 self.cellDataGroup,
@@ -549,6 +549,7 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
             ]
         )
 
+        #* 保存機能用ファイルピッカー関連
         self.saveFilePicker = filePickers[Enum_FilePickerIdx.OUTPUT_SAVE]
         self.saveFilePicker.on_result = self.pick_files_result
         self.outputPath:Path
@@ -558,6 +559,7 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
         # 3:CellLen_a, 4:CellLen_b, 5:CellLen_c,
         # 6:CellAngle_a, 7:CellAngle_b, 8:CellAngle_c, 9:CellVolume
         #* read_row -> data = インデックス番号
+        if self.readTable.rows is None: return
         self.readTable.rows.clear()
         read_row:ft.DataRow
         i:int = -1
@@ -633,6 +635,19 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
             fileData.save_output_file(self.outputPath)
         self.update()
 
+    def dataTable_row_clear_event(self, e):
+        if self.readTable.rows is None: return
+        if len(self.readTable.rows) == 0: return
+        for delIdx in self.selectedRows:
+            for row in self.readTable.rows:
+                if row.data == 404: continue
+                if row.data == delIdx:
+                    lastData = row.cells
+                    self.readTable.rows.remove(row)
+                    print(lastData)
+            lastIdx = self.selectedRows.remove(delIdx)
+        self.update()
+
 
 class MakeCiSupApp(ft.Container):
     def __init__(self):
@@ -699,6 +714,7 @@ class MakeCiSupApp(ft.Container):
             case 'READ_DATA':
                 self.btmBtn_Next.on_click = self.btmBtn_tab1_save_go_event
                 self.btmBtn_Func1.on_click = self.btmBtn_tab1_save_event
+                self.btmBtn_Func2.on_click = self.cn_tab1.dataTable_row_clear_event
             case _:
                 self.btmBtn_Next.on_click = None
                 self.btmBtn_Func1.on_click = None
