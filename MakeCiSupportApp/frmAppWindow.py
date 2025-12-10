@@ -466,7 +466,7 @@ class Cn_Tab0_FilePathSelect(Cn_TabContainer):
             self.pickBuilder.path_change(settingData['builder_path'])
 
 class Tab1_TxtF_CellData(ft.TextField):
-    def __init__(self, label:str, hint_text:str, read_only:bool=True, txtfIdx:int):
+    def __init__(self, cell_data_label:Enum_CellDataLabel, label:str, hint_text:str, read_only:bool=True):
         super().__init__(
             expand=1,
             dense=True,
@@ -474,7 +474,7 @@ class Tab1_TxtF_CellData(ft.TextField):
             hint_text=hint_text,
             read_only=read_only
         )
-        self.txtfIdx = txtfIdx
+        self.cellDataLbl = cell_data_label
 
 class Cn_Tab1_ReadData(Cn_TabContainer):
     def __init__(self):
@@ -482,17 +482,17 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
 
         #* 格子定数用
             #*個別データ
-        self.dataName = Tab1_TxtF_CellData(label="Data_Name", hint_text="fileName", read_only=False, txtfIdx=0)
-        self.spaceGItNum = Tab1_TxtF_CellData(label="SpaceG_IT_Num", hint_text="space_group_IT_number", txtfIdx=1)
-        self.spaceGName = Tab1_TxtF_CellData(label="SpaceG_Name", hint_text="space_group_name_H-M_alt", txtfIdx=2)
-        self.cellLenA = Tab1_TxtF_CellData(label="Cell_Length_a", hint_text="cell_length_a", txtfIdx=3)
-        self.cellLenB = Tab1_TxtF_CellData(label="Cell_Length_b", hint_text="cell_length_b", txtfIdx=4)
-        self.cellLenC = Tab1_TxtF_CellData(label="Cell_Length_c", hint_text="cell_length_c", txtfIdx=5)
-        self.cellAngleA = Tab1_TxtF_CellData(label="Cell_Angle_alpha", hint_text="cell_angle_alpha", txtfIdx=6)
-        self.cellAngleB = Tab1_TxtF_CellData(label="Cell_Angle_beta", hint_text="cell_angle_beta", txtfIdx=7)
-        self.cellAngleC = Tab1_TxtF_CellData(label="Cell_Angle_gamma", hint_text="cell_angle_gamma", txtfIdx=8)
-        self.cellVolume = Tab1_TxtF_CellData(label="Cell_Volume", hint_text="cell_volume", txtfIdx=9)
-        self.txtfList:List[ft.TextField] = [
+        self.dataName = Tab1_TxtF_CellData(cell_data_label=Enum_CellDataLabel.FILE_NAME, label="Data_Name", hint_text="fileName", read_only=False)
+        self.spaceGItNum = Tab1_TxtF_CellData(cell_data_label=Enum_CellDataLabel.SPACE_GROUP_IT_NUM, label="SpaceG_IT_Num", hint_text="space_group_IT_number")
+        self.spaceGName = Tab1_TxtF_CellData(cell_data_label=Enum_CellDataLabel.SPACE_GROUP_NAME, label="SpaceG_Name", hint_text="space_group_name_H-M_alt")
+        self.cellLenA = Tab1_TxtF_CellData(cell_data_label=Enum_CellDataLabel.CELL_LENGTH, label="Cell_Length_a", hint_text="cell_length_a")
+        self.cellLenB = Tab1_TxtF_CellData(cell_data_label=Enum_CellDataLabel.CELL_LENGTH, label="Cell_Length_b", hint_text="cell_length_b")
+        self.cellLenC = Tab1_TxtF_CellData(cell_data_label=Enum_CellDataLabel.CELL_LENGTH, label="Cell_Length_c", hint_text="cell_length_c")
+        self.cellAngleA = Tab1_TxtF_CellData(cell_data_label=Enum_CellDataLabel.CELL_ANGLE, label="Cell_Angle_alpha", hint_text="cell_angle_alpha")
+        self.cellAngleB = Tab1_TxtF_CellData(cell_data_label=Enum_CellDataLabel.CELL_ANGLE, label="Cell_Angle_beta", hint_text="cell_angle_beta")
+        self.cellAngleC = Tab1_TxtF_CellData(cell_data_label=Enum_CellDataLabel.CELL_ANGLE, label="Cell_Angle_gamma", hint_text="cell_angle_gamma")
+        self.cellVolume = Tab1_TxtF_CellData(cell_data_label=Enum_CellDataLabel.CELL_VOLUME, label="Cell_Volume", hint_text="cell_volume")
+        self.txtfList:List[Tab1_TxtF_CellData] = [
             self.dataName, self.spaceGItNum, self.spaceGName,
             self.cellLenA, self.cellLenB, self.cellLenC,
             self.cellAngleA, self.cellAngleB, self.cellAngleC,
