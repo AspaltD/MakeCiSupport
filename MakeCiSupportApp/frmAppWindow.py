@@ -1,7 +1,7 @@
 import flet as ft
 from pathlib import Path
 import re
-from typing import Final, Dict, List, Optional
+from typing import Final, Dict, List, Optional, Tuple
 from enum import Enum, IntEnum
 import os
 import copy
@@ -31,10 +31,44 @@ class Enum_CellDataLabel(IntEnum):
             case 'CELL_ANGLE': return 'cell_angle_'
             case 'CELL_VOLUME': return 'cell_volume'
             case 'ATOM': return ''
+    
+    def get_label_re(self) -> str:
+        match self.name:
+            case 'STATE': return 'MakeCi_.*'
+            case 'FILE_NAME': return 'fileName'
+            case 'SPACE_GROUP_IT_NUM': return 'space_group_IT_number'
+            case 'SPACE_GROUP_NAME': return 'space_group_name_H-M_alt'
+            case 'CELL_LENGTH': return 'cell_length_'
+            case 'CELL_ANGLE': return 'cell_angle_'
+            case 'CELL_VOLUME': return 'cell_volume'
+            case 'ATOM': return '[A-Z][a-z]?'
 
+    def get_label_max_len(self)->int:
+        match self.name:
+            case 'ATOM': return 7
+            case _: return 2
 
+class FileData_Value(List[str]):
+    def __init__(self, data_label:Enum_CellDataLabel, *value:str):
+        self.dataLabel = data_label
+        if len(value) > self.dataLabel.get_label_max_len():
+            self = ["Invalid value"]
+            return
+        for v in value:
+            self.append(v)
 
-class FileData(List[List[str]]):
+    def check_label_len(self)->bool:
+        if len(self) >= self.dataLabel.get_label_max_len(): return False
+        return True
+
+    def append(self, object: str) -> None:
+        if not self.check_label_len():
+            print("This value is max length.")
+            return
+        return super().append(object)
+
+#! FileData2クラスは旧バージョンです。現在はFileDataクラスが全機能を引き継いでいるため削除予定です。
+class FileData2(List[List[str]]):
     def __init__(self):
         self = ["initialized"]
 
@@ -117,6 +151,7 @@ class FileData(List[List[str]]):
                     atom2ndIdx += 1
                     if not atomParts[7] == "1":
                         self[-1].append(atomParts[7].split('(')[0])
+        self.print_data()
         self.save_outpuuuut_file()
         return True
 
@@ -179,6 +214,160 @@ class FileData(List[List[str]]):
                 value[1] = newFileName
                 return lastName
         return None
+    
+class FileData(List[FileData_Value]):
+    def __init__(self):
+        self.append_value(Enum_CellDataLabel.STATE, "Initialize")
+
+    def append_value(self, cell_data_label:Enum_CellDataLabel, *value:str) -> None:
+        return self.append(FileData_Value(cell_data_label, *value))
+
+    def print_data(self):
+        i = -1
+        print("idx: value")
+        for value in self:
+            i += 1
+            print(f'{i}: {value}')
+
+    def read_cif_file(self, cifPath:Path) -> bool:
+        if not Path.is_file(cifPath): return False
+        if cifPath.suffix[1:] != 'cif': return False
+        self.clear()
+        self.append_value(Enum_CellDataLabel.STATE, "FileData_CIF")
+        i:int = -1
+        atoms:bool = False
+        atom1stIdx:int = 0
+        atom2ndIdx:int = 0
+        with open(cifPath) as f:
+            for lineS in f:
+                i += 1
+                line = lineS.strip()
+                if i >= 450:
+                    print("readline is over.(400 lines)")
+                    return False
+                if i == 0:
+                    if not cifPath.stem.lower() in line:
+                        print("file is not compleat by Olex2-1.5")
+                        return False
+                    self.append_value(Enum_CellDataLabel.FILE_NAME, "fileName", line)
+                    continue
+                if "_space_group_IT_number" in line:
+                    self.append_value(Enum_CellDataLabel.SPACE_GROUP_IT_NUM, "space_group_IT_number", line.split()[1])
+                elif "_space_group_name_H-M_alt" in line:
+                    stock = line.split("'")
+                    self.append_value(Enum_CellDataLabel.SPACE_GROUP_NAME, "space_group_name_H-M_alt", '_'.join(stock[1].split(' ')))
+                elif "_cell_length_" in line:
+                    stock = line.split()
+                    self.append_value(Enum_CellDataLabel.CELL_LENGTH, stock[0][1:], stock[1].split('(')[0])
+                elif "_cell_angle_" in line:
+                    stock = line.split()
+                    self.append_value(Enum_CellDataLabel.CELL_ANGLE, stock[0][1:], stock[1].split('(')[0])
+                elif "_cell_volume" in line:
+                    self.append_value(Enum_CellDataLabel.CELL_VOLUME, "cell_volume", line.split()[1].split('(')[0])
+                elif "_atom_site_disorder_group" in line:
+                    atoms = True
+                    atom1stIdx = 1
+                    atom2ndIdx = 1
+                    continue
+                elif "loop_" in line:
+                    if atoms:
+                        print("read finished")
+                        print("i: " + str(i))
+                        break
+                    else:
+                        atoms = False
+                        continue
+                else:
+                    pass
+                if atoms:
+                    #? 行が正しく原子情報を示しているか判定
+                    atomParts = line.split()
+                    if len(atomParts) < 5:
+                        continue
+                    #? 第1，第2 インデックス番号の決定
+                    atomName = atomParts[1]
+                    if atom1stIdx == 1 and atom2ndIdx == 1:
+                        pass
+                    elif atomName == self[-1][0]:
+                        atom1stIdx = int(self[-1][1])
+                    else:
+                        atom1stIdx = int(self[-1][1]) + 1
+                        atom2ndIdx = 1
+                    #? リストへの追加。次も同じ種類の元素と仮定してatomSexIdxを+1して次へ。
+                    #? また，occの有無を判別して混晶なら占有比の抜き出しも行う
+                    self.append_value(Enum_CellDataLabel.ATOM, atomName,str(atom1stIdx),str(atom2ndIdx),atomParts[2].split('(')[0],atomParts[3].split('(')[0],atomParts[4].split('(')[0])
+                    atom2ndIdx += 1
+                    if not atomParts[7] == "1":
+                        self[-1].append(atomParts[7].split('(')[0])
+        self.save_outpuuuut_file()
+        return True
+
+    def read_output_file(self, outputFilePath:Path)->bool:
+        if not Path.is_file(outputFilePath): return False
+        if outputFilePath.suffix[1:] != 'txt': return False
+        self.clear()
+        self.append_value(Enum_CellDataLabel.STATE, "FileData_Output")
+        i:int = -1
+        with open(outputFilePath) as f:
+            for lineS in f:
+                i += 1
+                line = lineS.strip()
+                if i >= 200:
+                    print("readline is over.(200)")
+                    return False
+                if i == 0:
+                    if not re.match('MakeCi_.*', line):
+                        print("This txt_file is not output_file.")
+                        return False
+                    else: continue
+
+                lineP = line.split()
+                for label in Enum_CellDataLabel:
+                    if re.match(label.get_label_re(), lineP[0]):
+                        self.append_value(label)
+                        break
+                for data in lineP:
+                    self[-1].append(data)
+            print(f"end_line: {i}")
+        self.print_data()
+        self.save_outpuuuut_file()
+        return True
+
+    def save_outpuuuut_file(self):
+        outputLines:List[str] = ["MakeCi_output"]
+        if not re.match('FileData_.*', self[0][0]): return
+        for line in self:   #! writeメソッドをforの内側に入れる？
+            if re.match('FileData_.*', line[0]): continue
+            outputLines.append('   '.join(line))
+        with open(OUTPUUUUT_PATH, mode='w') as f:
+            f.write('\n'.join(outputLines))
+
+    def save_output_file(self, outputPath:Path)->bool:
+        if outputPath.suffix[1:] == "": return False
+        if outputPath.suffix[1:] != "txt": return False
+        #if not Path.exists(outputPath): return False
+        if not re.match('FileData_.*', self[0][0]): return False
+        with open(outputPath, mode='w') as f:
+            f.write("MakeCi_output"+'\n')
+            for line in self:
+                if re.match('FileData_.*', line[0]): continue
+                outputLine = '   '.join(line)
+                f.write(outputLine + '\n')
+        return True
+
+    def change_file_name(self, newFileName:str)->Optional[str]:
+        if '\\' in newFileName: return None
+        if '.' in newFileName: return None
+        if ' ' in newFileName: return None
+        if newFileName == "": return None
+        for value in self:
+            if value[0] == "fileName":
+                lastName = value[1]
+                value[1] = newFileName
+                return lastName
+        return None
+
+
 fileData = FileData()
 
 class Enum_TabIdx(IntEnum):
