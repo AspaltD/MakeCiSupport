@@ -5,6 +5,7 @@ from typing import Dict, List, Optional
 import os
 import copy
 import mdEnumClass as en
+import mdAutoRun as ar
 
 filePickers: Dict[en.FilePickerIdx, ft.FilePicker] = {}
 fileData:FileData
@@ -30,6 +31,9 @@ class FileData_Value(List[str]):
             print("This value is max length.")
             return
         return super().append(object)
+    
+    def get_self(self) -> FileData_Value:
+        return copy.deepcopy(self)
 
 
 class FileData(List[FileData_Value]):
@@ -45,6 +49,27 @@ class FileData(List[FileData_Value]):
         for value in self:
             i += 1
             print(f'{i}: {value}')
+
+    def search_get_value_single(self, cell_data_label:en.CellDataLabel) -> Optional[FileData_Value]:
+        if cell_data_label == en.CellDataLabel.ATOM: return None
+        if cell_data_label == en.CellDataLabel.CELL_LENGTH: return None
+        if cell_data_label == en.CellDataLabel.CELL_ANGLE: return None
+        for value in self:
+            if value.dataLabel == cell_data_label: return value.get_self()
+        return None
+    
+    def search_get_value_branch(self, cell_data_label:en.CellDataLabel, branch:str) -> Optional[FileData_Value]:
+        #if cell_data_label != (en.CellDataLabel.CELL_LENGTH or en.CellDataLabel.CELL_ANGLE): return None
+        for value in self:
+            if value[0] == (value.dataLabel.get_label_str() + branch): return value.get_self()
+        return None
+    
+    def search_get_value_atoms(self) -> List[FileData_Value]:
+        atomList:List[FileData_Value] = []
+        for value in self:
+            if value.dataLabel is en.CellDataLabel.ATOM:
+                atomList.append(value.get_self())
+        return atomList
 
     def read_cif_file(self, cifPath:Path) -> bool:
         if not Path.is_file(cifPath): return False
@@ -116,6 +141,7 @@ class FileData(List[FileData_Value]):
                     atom2ndIdx += 1
                     if not atomParts[7] == "1":
                         self[-1].append(atomParts[7].split('(')[0])
+        self.print_data()
         self.save_outpuuuut_file()
         return True
 
@@ -716,10 +742,13 @@ class MakeCiSupApp(ft.Container):
     def btmBtn_tab1_save_go_event(self,e):
         if not re.match('FileData_.*', fileData[0][0]): return
         self.cn_tab1.commit_fileData()
+        ar.auto_atom_info_insert(self.cn_tab0.pickBuilder.get_path(), fileData)
+        self.update()
     def btmBtn_tab1_save_event(self, e):
         if not re.match('FileData_.*', fileData[0][0]): return
         self.cn_tab1.commit_fileData()
         self.cn_tab1.saveFilePicker.save_file(allowed_extensions=['txt'])
+        self.update()
     
     def btmBtn_tab1_remove_event(self, e):
         pass
