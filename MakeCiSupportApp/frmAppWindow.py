@@ -696,6 +696,8 @@ class MakeCiSupApp(ft.Container):
         )
         self.tab_change(en.TabIdx.FILE_PATH_SELECT)
 
+        self.ciAuto = ar.Ci_AutoRun()
+
 
     def tab_change(self, toTabIdx:en.TabIdx):
         for tab in self.cn_tabContents.controls:
@@ -715,6 +717,8 @@ class MakeCiSupApp(ft.Container):
                 self.btmBtn_Next.on_click = self.btmBtn_tab1_save_go_event
                 self.btmBtn_Func1.on_click = self.btmBtn_tab1_save_event
                 self.btmBtn_Func2.on_click = self.cn_tab1.dataTable_row_clear_event
+            case 'BUILDER_LOG':
+                self.btmBtn_Next.on_click = self.btmBtn_tab2_stop_event
             case _:
                 self.btmBtn_Next.on_click = None
                 self.btmBtn_Func1.on_click = None
@@ -742,16 +746,19 @@ class MakeCiSupApp(ft.Container):
     def btmBtn_tab1_save_go_event(self,e):
         if not re.match('FileData_.*', fileData[0][0]): return
         self.cn_tab1.commit_fileData()
-        ar.auto_atom_info_insert(self.cn_tab0.pickBuilder.get_path(), fileData)
+        self.ciAuto.stopRun = False
+        self.tab_change(en.TabIdx.BUILDER_LOG)
         self.update()
+        self.ciAuto.auto_atom_info_insert(self.cn_tab0.pickBuilder.get_path(), fileData)
     def btmBtn_tab1_save_event(self, e):
         if not re.match('FileData_.*', fileData[0][0]): return
         self.cn_tab1.commit_fileData()
         self.cn_tab1.saveFilePicker.save_file(allowed_extensions=['txt'])
         self.update()
     
-    def btmBtn_tab1_remove_event(self, e):
-        pass
+    def btmBtn_tab2_stop_event(self, e):
+        self.ciAuto.stopRun = True
+        self.update()
 
 class ExitConfirmDialog(ft.AlertDialog):
     def __init__(self):
