@@ -1,55 +1,19 @@
 import flet as ft
 from pathlib import Path
 import re
-from typing import Final, Dict, List, Optional, Tuple
-from enum import Enum, IntEnum
+from typing import Dict, List, Optional
 import os
 import copy
+import mdEnumClass as en
 
-filePickers: Dict[Enum_FilePickerIdx, ft.FilePicker] = {}
+filePickers: Dict[en.FilePickerIdx, ft.FilePicker] = {}
 fileData:FileData
 settingData: Dict[str, str] = {}
 OUTPUUUUT_PATH:Path = Path('MakeCiSupportApp/outpuuuut.txt')
 
-class Enum_CellDataLabel(IntEnum):
-    STATE = 0
-    FILE_NAME = 1
-    SPACE_GROUP_IT_NUM = 2
-    SPACE_GROUP_NAME = 3
-    CELL_LENGTH = 4
-    CELL_ANGLE = 5
-    CELL_VOLUME = 6
-    ATOM = 7
-
-    def get_label_str(self)->str:
-        match self.name:
-            case 'STATE': return 'MakeCi_'
-            case 'FILE_NAME': return 'fileName'
-            case 'SPACE_GROUP_IT_NUM': return 'space_group_IT_number'
-            case 'SPACE_GROUP_NAME': return 'space_group_name_H-M_alt'
-            case 'CELL_LENGTH': return 'cell_length_'
-            case 'CELL_ANGLE': return 'cell_angle_'
-            case 'CELL_VOLUME': return 'cell_volume'
-            case 'ATOM': return ''
-    
-    def get_label_re(self) -> str:
-        match self.name:
-            case 'STATE': return 'MakeCi_.*'
-            case 'FILE_NAME': return 'fileName'
-            case 'SPACE_GROUP_IT_NUM': return 'space_group_IT_number'
-            case 'SPACE_GROUP_NAME': return 'space_group_name_H-M_alt'
-            case 'CELL_LENGTH': return 'cell_length_'
-            case 'CELL_ANGLE': return 'cell_angle_'
-            case 'CELL_VOLUME': return 'cell_volume'
-            case 'ATOM': return '[A-Z][a-z]?'
-
-    def get_label_max_len(self)->int:
-        match self.name:
-            case 'ATOM': return 7
-            case _: return 2
 
 class FileData_Value(List[str]):
-    def __init__(self, data_label:Enum_CellDataLabel, *value:str):
+    def __init__(self, data_label:en.CellDataLabel, *value:str):
         self.dataLabel = data_label
         if len(value) > self.dataLabel.get_label_max_len():
             self = ["Invalid value"]
@@ -67,159 +31,12 @@ class FileData_Value(List[str]):
             return
         return super().append(object)
 
-#! FileData2クラスは旧バージョンです。現在はFileDataクラスが全機能を引き継いでいるため削除予定です。
-class FileData2(List[List[str]]):
-    def __init__(self):
-        self = ["initialized"]
 
-    def print_data(self):
-        i = -1
-        print("idx: value")
-        for value in self:
-            i += 1
-            print(f'{i}: {value}')
-
-    def read_cif_file(self, cifPath:Path)->bool:
-        if cifPath.suffix[1:] == "": return False
-        if cifPath.suffix[1:] != "cif": return False
-        if not Path.is_file(cifPath): return False
-        self.clear()
-        self.append(["FileData_CIF"])
-        i:int = -1
-        atoms:bool = False
-        atom1stIdx:int = 0
-        atom2ndIdx:int = 0
-        with open(cifPath) as f:
-            for lineS in f:
-                i += 1
-                line = lineS.strip()
-                if i >= 450 :
-                    print("readline is over.(400 lines)")
-                    return False
-                if i == 0:
-                    if cifPath.stem.lower() in line:
-                        self.append(["fileName", line])
-                        continue
-                    else:
-                        print("file is not compleat by Olex2-1.5")
-                        return False
-                if "_space_group_IT_number" in line:
-                    self.append(["space_group_IT_number", line.split()[1]])
-                elif "_space_group_name_H-M_alt" in line:
-                    stock = line.split("'")
-                    self.append(["space_group_name_H-M_alt", '_'.join(stock[1].split(' '))])
-                elif "_cell_length_" in line:
-                    stock = line.split()
-                    self.append([stock[0][1:], stock[1].split('(')[0]])
-                elif "_cell_angle_" in line:
-                    stock = line.split()
-                    self.append([stock[0][1:], stock[1].split('(')[0]])
-                elif "_cell_volume" in line:
-                    self.append(["cell_volume", line.split()[1].split('(')[0]])
-                elif "_atom_site_disorder_group" in line:
-                    atoms = True
-                    atom1stIdx = 1
-                    atom2ndIdx = 1
-                    continue
-                elif "loop_" in line:
-                    if atoms:
-                        print("read finished")
-                        print("i: " + str(i))
-                        break
-                    else:
-                        atoms = False
-                        continue
-                else:
-                    pass
-                if atoms:
-                    #? 行が正しく原子情報を示しているか判定
-                    atomParts = line.split()
-                    if len(atomParts) < 5:
-                        continue
-                    #? 第1，第2 インデックス番号の決定
-                    atomName = atomParts[1]
-                    if atom1stIdx == 1 and atom2ndIdx == 1:
-                        pass
-                    elif atomName == self[-1][0]:
-                        atom1stIdx = int(self[-1][1])
-                    else:
-                        atom1stIdx = int(self[-1][1]) + 1
-                        atom2ndIdx = 1
-                    #? リストへの追加。次も同じ種類の元素と仮定してatomSexIdxを+1して次へ。
-                    #? また，occの有無を判別して混晶なら占有比の抜き出しも行う
-                    self.append([atomName,str(atom1stIdx),str(atom2ndIdx),atomParts[2].split('(')[0],atomParts[3].split('(')[0],atomParts[4].split('(')[0]])
-                    atom2ndIdx += 1
-                    if not atomParts[7] == "1":
-                        self[-1].append(atomParts[7].split('(')[0])
-        self.print_data()
-        self.save_outpuuuut_file()
-        return True
-
-    def read_output_file(self, outputFilePath:Path)->bool:
-        self.clear()
-        self.append(["FileData_Output"])
-        i:int = -1
-        with open(outputFilePath) as f:
-            for lineS in f:
-                i += 1
-                line = lineS.strip()
-                if i >= 200:
-                    print("readline is over.(200)")
-                    return False
-                if i == 0:
-                    if not re.match('MakeCi_.*', line):
-                        print("This txt_file is not output_file.")
-                        return False
-                    else: continue
-
-                lineP = line.split()
-                self.append([])
-                for data in lineP:
-                    self[-1].append(data)
-            print(f"end_line: {i}")
-        self.print_data()
-        self.save_outpuuuut_file()
-        return True
-
-    def save_outpuuuut_file(self):
-        outputLines:List[str] = ["MakeCi_output"]
-        if not re.match('FileData_.*', self[0][0]): return
-        for line in self:   #! writeメソッドをforの内側に入れる？
-            if re.match('FileData_.*', line[0]): continue
-            outputLines.append('   '.join(line))
-        with open(OUTPUUUUT_PATH, mode='w') as f:
-            f.write('\n'.join(outputLines))
-
-    def save_output_file(self, outputPath:Path)->bool:
-        if outputPath.suffix[1:] == "": return False
-        if outputPath.suffix[1:] != "txt": return False
-        #if not Path.exists(outputPath): return False
-        if not re.match('FileData_.*', self[0][0]): return False
-        with open(outputPath, mode='w') as f:
-            f.write("MakeCi_output"+'\n')
-            for line in self:
-                if re.match('FileData_.*', line[0]): continue
-                outputLine = '   '.join(line)
-                f.write(outputLine + '\n')
-        return True
-
-    def change_file_name(self, newFileName:str)->Optional[str]:
-        if '\\' in newFileName: return None
-        if '.' in newFileName: return None
-        if ' ' in newFileName: return None
-        if newFileName == "": return None
-        for value in self:
-            if value[0] == "fileName":
-                lastName = value[1]
-                value[1] = newFileName
-                return lastName
-        return None
-    
 class FileData(List[FileData_Value]):
     def __init__(self):
-        self.append_value(Enum_CellDataLabel.STATE, "Initialize")
+        self.append_value(en.CellDataLabel.STATE, "Initialize")
 
-    def append_value(self, cell_data_label:Enum_CellDataLabel, *value:str) -> None:
+    def append_value(self, cell_data_label:en.CellDataLabel, *value:str) -> None:
         return self.append(FileData_Value(cell_data_label, *value))
 
     def print_data(self):
@@ -233,7 +50,7 @@ class FileData(List[FileData_Value]):
         if not Path.is_file(cifPath): return False
         if cifPath.suffix[1:] != 'cif': return False
         self.clear()
-        self.append_value(Enum_CellDataLabel.STATE, "FileData_CIF")
+        self.append_value(en.CellDataLabel.STATE, "FileData_CIF")
         i:int = -1
         atoms:bool = False
         atom1stIdx:int = 0
@@ -249,21 +66,21 @@ class FileData(List[FileData_Value]):
                     if not cifPath.stem.lower() in line:
                         print("file is not compleat by Olex2-1.5")
                         return False
-                    self.append_value(Enum_CellDataLabel.FILE_NAME, "fileName", line)
+                    self.append_value(en.CellDataLabel.FILE_NAME, "fileName", line)
                     continue
                 if "_space_group_IT_number" in line:
-                    self.append_value(Enum_CellDataLabel.SPACE_GROUP_IT_NUM, "space_group_IT_number", line.split()[1])
+                    self.append_value(en.CellDataLabel.SPACE_GROUP_IT_NUM, "space_group_IT_number", line.split()[1])
                 elif "_space_group_name_H-M_alt" in line:
                     stock = line.split("'")
-                    self.append_value(Enum_CellDataLabel.SPACE_GROUP_NAME, "space_group_name_H-M_alt", '_'.join(stock[1].split(' ')))
+                    self.append_value(en.CellDataLabel.SPACE_GROUP_NAME, "space_group_name_H-M_alt", '_'.join(stock[1].split(' ')))
                 elif "_cell_length_" in line:
                     stock = line.split()
-                    self.append_value(Enum_CellDataLabel.CELL_LENGTH, stock[0][1:], stock[1].split('(')[0])
+                    self.append_value(en.CellDataLabel.CELL_LENGTH, stock[0][1:], stock[1].split('(')[0])
                 elif "_cell_angle_" in line:
                     stock = line.split()
-                    self.append_value(Enum_CellDataLabel.CELL_ANGLE, stock[0][1:], stock[1].split('(')[0])
+                    self.append_value(en.CellDataLabel.CELL_ANGLE, stock[0][1:], stock[1].split('(')[0])
                 elif "_cell_volume" in line:
-                    self.append_value(Enum_CellDataLabel.CELL_VOLUME, "cell_volume", line.split()[1].split('(')[0])
+                    self.append_value(en.CellDataLabel.CELL_VOLUME, "cell_volume", line.split()[1].split('(')[0])
                 elif "_atom_site_disorder_group" in line:
                     atoms = True
                     atom1stIdx = 1
@@ -295,7 +112,7 @@ class FileData(List[FileData_Value]):
                         atom2ndIdx = 1
                     #? リストへの追加。次も同じ種類の元素と仮定してatomSexIdxを+1して次へ。
                     #? また，occの有無を判別して混晶なら占有比の抜き出しも行う
-                    self.append_value(Enum_CellDataLabel.ATOM, atomName,str(atom1stIdx),str(atom2ndIdx),atomParts[2].split('(')[0],atomParts[3].split('(')[0],atomParts[4].split('(')[0])
+                    self.append_value(en.CellDataLabel.ATOM, atomName,str(atom1stIdx),str(atom2ndIdx),atomParts[2].split('(')[0],atomParts[3].split('(')[0],atomParts[4].split('(')[0])
                     atom2ndIdx += 1
                     if not atomParts[7] == "1":
                         self[-1].append(atomParts[7].split('(')[0])
@@ -306,7 +123,7 @@ class FileData(List[FileData_Value]):
         if not Path.is_file(outputFilePath): return False
         if outputFilePath.suffix[1:] != 'txt': return False
         self.clear()
-        self.append_value(Enum_CellDataLabel.STATE, "FileData_Output")
+        self.append_value(en.CellDataLabel.STATE, "FileData_Output")
         i:int = -1
         with open(outputFilePath) as f:
             for lineS in f:
@@ -322,7 +139,7 @@ class FileData(List[FileData_Value]):
                     else: continue
 
                 lineP = line.split()
-                for label in Enum_CellDataLabel:
+                for label in en.CellDataLabel:
                     if re.match(label.get_label_re(), lineP[0]):
                         self.append_value(label)
                         break
@@ -370,15 +187,6 @@ class FileData(List[FileData_Value]):
 
 fileData = FileData()
 
-class Enum_TabIdx(IntEnum):
-    FILE_PATH_SELECT = 0
-    READ_DATA = 1
-    BUILDER_LOG = 2
-    BUILDER_RESULT = 3
-    PLACE_HOLDER = 99
-    #TAB_404 = 404
-
-
 
 #*TabChangeBar内でボタンの間に挟む「▼」文字。繰り返し構造のためクラス化してる。
 class Left_DownMarkTxt(ft.Text):
@@ -392,7 +200,7 @@ class Left_DownMarkTxt(ft.Text):
 #*TabChangeBar内のタブを表すボタンの抽象クラスに当たるもの。
 #*引数にタブ番号と動作設定(動作内容の関係でfrm本体に渡してもらう必要がある)，表示テキストを指定。
 class Left_TabBtn(ft.FilledButton):
-    def __init__(self, tabIdx:Enum_TabIdx, leftBtnClicked:ft.ControlEvent, text:str):
+    def __init__(self, tabIdx:en.TabIdx, leftBtnClicked:ft.ControlEvent, text:str):
         super().__init__(
             width=150,
             height=40
@@ -403,16 +211,16 @@ class Left_TabBtn(ft.FilledButton):
 
 class Left_TabBtn_Tab0(Left_TabBtn):
     def __init__(self, leftBtnClicked:ft.ControlEvent):
-        super().__init__(tabIdx=Enum_TabIdx.FILE_PATH_SELECT, leftBtnClicked=leftBtnClicked, text="ファイル設定")
+        super().__init__(tabIdx=en.TabIdx.FILE_PATH_SELECT, leftBtnClicked=leftBtnClicked, text="ファイル設定")
 class Left_TabBtn_Tab1(Left_TabBtn):
     def __init__(self, leftBtnClicked:ft.ControlEvent):
-        super().__init__(Enum_TabIdx.READ_DATA, leftBtnClicked, "読取結果")
+        super().__init__(en.TabIdx.READ_DATA, leftBtnClicked, "読取結果")
 class Left_TabBtn_Tab2(Left_TabBtn):
     def __init__(self, leftBtnClicked:ft.ControlEvent):
-        super().__init__(Enum_TabIdx.BUILDER_LOG, leftBtnClicked, "Builderログ")
+        super().__init__(en.TabIdx.BUILDER_LOG, leftBtnClicked, "Builderログ")
 class Left_TabBtn_Tab3(Left_TabBtn):
     def __init__(self, leftBtnClicked:ft.ControlEvent):
-        super().__init__(Enum_TabIdx.BUILDER_RESULT, leftBtnClicked, "Builder動作完了")
+        super().__init__(en.TabIdx.BUILDER_RESULT, leftBtnClicked, "Builder動作完了")
 
 #*ウィンドウ左側のタブ切り替え用のボタンを配置したコンテナ
 #*引数にボタン動作を要求
@@ -441,32 +249,26 @@ class Left_TabChangeBar(ft.Container):
             ]
         )
 
-
-class Enum_BtmBtnIdx(IntEnum):
-    NEXT_TAB = 0
-    EXIT_APP = 1
-    OTHER_FUNC1 = 2
-    OTHER_FUNC2 = 3
 class Btm_TabFuncBtn(ft.FilledButton):
-    def __init__(self, text:str, workPlaceIdx:Enum_BtmBtnIdx):
+    def __init__(self, text:str, workPlaceIdx:en.BtmBtnIdx):
         super().__init__(
             width=120,
             text=text
         )
         self.workPlaceIdx = workPlaceIdx
 
-    def change_property(self, toTabIdx:Enum_TabIdx):
+    def change_property(self, toTabIdx:en.TabIdx):
         self.disabled = True
 
 class BtmBtn_EXit(Btm_TabFuncBtn):
     def __init__(self):
         super().__init__(
             text="ExitApp",
-            workPlaceIdx=Enum_BtmBtnIdx.EXIT_APP
+            workPlaceIdx=en.BtmBtnIdx.EXIT_APP
             )
         self.on_click = lambda _: self.page.window.close()
 
-    def change_property(self, toTabIdx: Enum_TabIdx):
+    def change_property(self, toTabIdx: en.TabIdx):
         match toTabIdx.name:
             case 'BUILDER_LOG':
                 self.disabled = True
@@ -475,9 +277,9 @@ class BtmBtn_EXit(Btm_TabFuncBtn):
 
 class BtmBtn_Next(Btm_TabFuncBtn):
     def __init__(self):
-        super().__init__("Next", Enum_BtmBtnIdx.NEXT_TAB)
+        super().__init__("Next", en.BtmBtnIdx.NEXT_TAB)
 
-    def change_property(self, toTabIdx: Enum_TabIdx):
+    def change_property(self, toTabIdx: en.TabIdx):
         match toTabIdx.name:
             case 'FILE_PATH_SELECT':
                 self.text = "ReadCIF"
@@ -493,9 +295,9 @@ class BtmBtn_Next(Btm_TabFuncBtn):
                 self.disabled = True
 class BtmBtn_Func1(Btm_TabFuncBtn):
     def __init__(self):
-        super().__init__("OtherFunc1", Enum_BtmBtnIdx.OTHER_FUNC1)
+        super().__init__("OtherFunc1", en.BtmBtnIdx.OTHER_FUNC1)
 
-    def change_property(self, toTabIdx: Enum_TabIdx):
+    def change_property(self, toTabIdx: en.TabIdx):
         match toTabIdx.name:
             case 'FILE_PATH_SELECT':
                 self.text = "ReadTXT"
@@ -509,9 +311,9 @@ class BtmBtn_Func1(Btm_TabFuncBtn):
 
 class BtmBtn_Func2(Btm_TabFuncBtn):
     def __init__(self):
-        super().__init__("OtherFunc2", Enum_BtmBtnIdx.OTHER_FUNC2)
+        super().__init__("OtherFunc2", en.BtmBtnIdx.OTHER_FUNC2)
 
-    def change_property(self, toTabIdx: Enum_TabIdx):
+    def change_property(self, toTabIdx: en.TabIdx):
         match toTabIdx.name:
             case 'READ_DATA':
                 self.text = "Remove"
@@ -522,7 +324,7 @@ class BtmBtn_Func2(Btm_TabFuncBtn):
 
 
 class Btm_BtnBar(ft.Row):
-    def __init__(self, tabIdx:Enum_TabIdx):
+    def __init__(self, tabIdx:en.TabIdx):
         super().__init__(
             expand=1,
             alignment=ft.MainAxisAlignment.END
@@ -540,25 +342,8 @@ class Btm_BtnBar(ft.Row):
         self.controls = newBtnList
 
 
-class Enum_FilePickerIdx(IntEnum):
-    BUILDER_PICK = 0
-    CIF_PICK = 1
-    OUTPUT_PICK = 2
-    OUTPUT_SAVE = 3
-
-    def get_fileType(self)->str:
-        match self.name:
-            case 'BUILDER_PICK':
-                return "exe"
-            case 'CIF_PICK':
-                return "cif"
-            case 'OUTPUT_PICK':
-                return "txt"
-            case 'OUTPUT_SAVE':
-                return "txt"
-
 class Tab_FilePicker_Bar(ft.Row):
-    def __init__(self, filePickerIdx:Enum_FilePickerIdx):
+    def __init__(self, filePickerIdx:en.FilePickerIdx):
         super().__init__(
             spacing=0
         )
@@ -607,20 +392,20 @@ class Tab_FilePicker_Bar(ft.Row):
 
 class Tab0_FPBar_Builder(Tab_FilePicker_Bar):
     def __init__(self):
-        super().__init__(filePickerIdx=Enum_FilePickerIdx.BUILDER_PICK)
+        super().__init__(filePickerIdx=en.FilePickerIdx.BUILDER_PICK)
         self.pathTxtf.hint_text = "Builder.exe Path"
 class Tab0_FPBar_CIF(Tab_FilePicker_Bar):
     def __init__(self):
-        super().__init__(filePickerIdx=Enum_FilePickerIdx.CIF_PICK)
+        super().__init__(filePickerIdx=en.FilePickerIdx.CIF_PICK)
         self.pathTxtf.hint_text = "CIF File Path"
 class Tab0_FPBar_Output(Tab_FilePicker_Bar):
     def __init__(self):
-        super().__init__(filePickerIdx=Enum_FilePickerIdx.OUTPUT_PICK)
+        super().__init__(filePickerIdx=en.FilePickerIdx.OUTPUT_PICK)
         self.pathTxtf.hint_text = "Output File Path"
 
 #* タブのコンテナ。
 class Cn_TabContainer(ft.Container):
-    def __init__(self, tabIdx:Enum_TabIdx, defVisible:bool):
+    def __init__(self, tabIdx:en.TabIdx, defVisible:bool):
         super().__init__(
             expand=10,
             padding=10,
@@ -632,12 +417,12 @@ class Cn_TabContainer(ft.Container):
 
 class Cn_Tab99_PlaceHoldeeeer(Cn_TabContainer):
     def __init__(self):
-        super().__init__(tabIdx=Enum_TabIdx.PLACE_HOLDER, defVisible=True)
+        super().__init__(tabIdx=en.TabIdx.PLACE_HOLDER, defVisible=True)
         self.content = ft.Placeholder(color=ft.Colors.random())
 
 class Cn_Tab0_FilePathSelect(Cn_TabContainer):
     def __init__(self):
-        super().__init__(tabIdx=Enum_TabIdx.FILE_PATH_SELECT, defVisible=True)
+        super().__init__(tabIdx=en.TabIdx.FILE_PATH_SELECT, defVisible=True)
         self.pickBuilder = Tab0_FPBar_Builder()
         self.pickCIF = Tab0_FPBar_CIF()
         self.pickOutput = Tab0_FPBar_Output()
@@ -655,7 +440,7 @@ class Cn_Tab0_FilePathSelect(Cn_TabContainer):
             self.pickBuilder.path_change(settingData['builder_path'])
 
 class Tab1_TxtF_CellData(ft.TextField):
-    def __init__(self, cell_data_label:Enum_CellDataLabel, label:str, hint_text:str, read_only:bool=True):
+    def __init__(self, cell_data_label:en.CellDataLabel, label:str, hint_text:str, read_only:bool=True):
         super().__init__(
             expand=1,
             dense=True,
@@ -667,20 +452,20 @@ class Tab1_TxtF_CellData(ft.TextField):
 
 class Cn_Tab1_ReadData(Cn_TabContainer):
     def __init__(self):
-        super().__init__(tabIdx=Enum_TabIdx.READ_DATA, defVisible=False)
+        super().__init__(tabIdx=en.TabIdx.READ_DATA, defVisible=False)
 
         #* 格子定数用
             #*個別データ
-        self.dataName = Tab1_TxtF_CellData(cell_data_label=Enum_CellDataLabel.FILE_NAME, label="Data_Name", hint_text="fileName", read_only=False)
-        self.spaceGItNum = Tab1_TxtF_CellData(cell_data_label=Enum_CellDataLabel.SPACE_GROUP_IT_NUM, label="SpaceG_IT_Num", hint_text="space_group_IT_number")
-        self.spaceGName = Tab1_TxtF_CellData(cell_data_label=Enum_CellDataLabel.SPACE_GROUP_NAME, label="SpaceG_Name", hint_text="space_group_name_H-M_alt")
-        self.cellLenA = Tab1_TxtF_CellData(cell_data_label=Enum_CellDataLabel.CELL_LENGTH, label="Cell_Length_a", hint_text="cell_length_a")
-        self.cellLenB = Tab1_TxtF_CellData(cell_data_label=Enum_CellDataLabel.CELL_LENGTH, label="Cell_Length_b", hint_text="cell_length_b")
-        self.cellLenC = Tab1_TxtF_CellData(cell_data_label=Enum_CellDataLabel.CELL_LENGTH, label="Cell_Length_c", hint_text="cell_length_c")
-        self.cellAngleA = Tab1_TxtF_CellData(cell_data_label=Enum_CellDataLabel.CELL_ANGLE, label="Cell_Angle_alpha", hint_text="cell_angle_alpha")
-        self.cellAngleB = Tab1_TxtF_CellData(cell_data_label=Enum_CellDataLabel.CELL_ANGLE, label="Cell_Angle_beta", hint_text="cell_angle_beta")
-        self.cellAngleC = Tab1_TxtF_CellData(cell_data_label=Enum_CellDataLabel.CELL_ANGLE, label="Cell_Angle_gamma", hint_text="cell_angle_gamma")
-        self.cellVolume = Tab1_TxtF_CellData(cell_data_label=Enum_CellDataLabel.CELL_VOLUME, label="Cell_Volume", hint_text="cell_volume")
+        self.dataName = Tab1_TxtF_CellData(cell_data_label=en.CellDataLabel.FILE_NAME, label="Data_Name", hint_text="fileName", read_only=False)
+        self.spaceGItNum = Tab1_TxtF_CellData(cell_data_label=en.CellDataLabel.SPACE_GROUP_IT_NUM, label="SpaceG_IT_Num", hint_text="space_group_IT_number")
+        self.spaceGName = Tab1_TxtF_CellData(cell_data_label=en.CellDataLabel.SPACE_GROUP_NAME, label="SpaceG_Name", hint_text="space_group_name_H-M_alt")
+        self.cellLenA = Tab1_TxtF_CellData(cell_data_label=en.CellDataLabel.CELL_LENGTH, label="Cell_Length_a", hint_text="cell_length_a")
+        self.cellLenB = Tab1_TxtF_CellData(cell_data_label=en.CellDataLabel.CELL_LENGTH, label="Cell_Length_b", hint_text="cell_length_b")
+        self.cellLenC = Tab1_TxtF_CellData(cell_data_label=en.CellDataLabel.CELL_LENGTH, label="Cell_Length_c", hint_text="cell_length_c")
+        self.cellAngleA = Tab1_TxtF_CellData(cell_data_label=en.CellDataLabel.CELL_ANGLE, label="Cell_Angle_alpha", hint_text="cell_angle_alpha")
+        self.cellAngleB = Tab1_TxtF_CellData(cell_data_label=en.CellDataLabel.CELL_ANGLE, label="Cell_Angle_beta", hint_text="cell_angle_beta")
+        self.cellAngleC = Tab1_TxtF_CellData(cell_data_label=en.CellDataLabel.CELL_ANGLE, label="Cell_Angle_gamma", hint_text="cell_angle_gamma")
+        self.cellVolume = Tab1_TxtF_CellData(cell_data_label=en.CellDataLabel.CELL_VOLUME, label="Cell_Volume", hint_text="cell_volume")
         self.txtfList:List[Tab1_TxtF_CellData] = [
             self.dataName, self.spaceGItNum, self.spaceGName,
             self.cellLenA, self.cellLenB, self.cellLenC,
@@ -739,7 +524,7 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
         )
 
         #* 保存機能用ファイルピッカー関連
-        self.saveFilePicker = filePickers[Enum_FilePickerIdx.OUTPUT_SAVE]
+        self.saveFilePicker = filePickers[en.FilePickerIdx.OUTPUT_SAVE]
         self.saveFilePicker.on_result = self.pick_files_result
         self.outputPath:Path
 
@@ -801,14 +586,14 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
     def commit_fileData(self):
         tab1FileData:FileData = FileData()
         tab1FileData.clear()
-        tab1FileData.append(["FileData_commit"])
+        tab1FileData.append_value(en.CellDataLabel.STATE, "FileData_commit")
         for txtf in self.txtfList:
-            tab1FileData.append([txtf.hint_text, txtf.value])
+            tab1FileData.append_value(txtf.cellDataLbl, txtf.hint_text, txtf.value)
         for row in self.readTable.rows:
-            tab1FileData.append([])
+            tab1FileData.append_value(en.CellDataLabel.ATOM)
             for cell in row.cells:
                 if cell.content.value == "-": pass
-                else: tab1FileData[-1].append(cell.content.value)
+                else: tab1FileData[-1].append(str(cell.content.value))
         #global fileData
         fileData = copy.deepcopy(tab1FileData)
         fileData.save_outpuuuut_file()
@@ -883,10 +668,10 @@ class MakeCiSupApp(ft.Container):
                 self.right_tabBase
             ]
         )
-        self.tab_change(Enum_TabIdx.FILE_PATH_SELECT)
+        self.tab_change(en.TabIdx.FILE_PATH_SELECT)
 
 
-    def tab_change(self, toTabIdx:Enum_TabIdx):
+    def tab_change(self, toTabIdx:en.TabIdx):
         for tab in self.cn_tabContents.controls:
             if tab.tabIdx == toTabIdx: tab.visible = True
             elif tab.tabIdx == 99: pass
@@ -895,7 +680,7 @@ class MakeCiSupApp(ft.Container):
             btn.change_property(toTabIdx)
         self.btmBtn_func_change(toTabIdx)
 
-    def btmBtn_func_change(self, toTabIdx:Enum_TabIdx):
+    def btmBtn_func_change(self, toTabIdx:en.TabIdx):
         match toTabIdx.name:
             case 'FILE_PATH_SELECT':
                 self.btmBtn_Next.on_click = self.btmBtn_tab0_readCIF_event
@@ -917,14 +702,14 @@ class MakeCiSupApp(ft.Container):
         if self.cn_tab0.pickBuilder.check_true_path() is False: return
         if self.cn_tab0.pickCIF.check_true_path() is False: return
         if fileData.read_cif_file(self.cn_tab0.pickCIF.get_path()):
-            self.tab_change(Enum_TabIdx.READ_DATA)
+            self.tab_change(en.TabIdx.READ_DATA)
             self.cn_tab1.insert_cells()
         self.update()
     def btmBtn_tab0_readTXT_event(self, e):
         if self.cn_tab0.pickBuilder.check_true_path() is False: return
         if self.cn_tab0.pickOutput.check_true_path() is False: return
         if fileData.read_output_file(self.cn_tab0.pickOutput.get_path()):
-            self.tab_change(Enum_TabIdx.READ_DATA)
+            self.tab_change(en.TabIdx.READ_DATA)
             self.cn_tab1.insert_cells()
         self.update()
     
@@ -964,7 +749,7 @@ def main(page: ft.Page):
     #page.update()
 
     global filePickers
-    for name in Enum_FilePickerIdx:
+    for name in en.FilePickerIdx:
         filePickers[name] = ft.FilePicker()
         page.overlay.append(filePickers.get(name))
     
@@ -999,6 +784,4 @@ def main(page: ft.Page):
 
 if __name__ == '__main__':
     ft.app(target=main)
-    #fileData.read_cif_file(Path("C:/Users/asufa/OneDrive/デスクトップ/1006_1h/MVAuNiUV_autored.cif"))
-    #fileData.printData()
 
