@@ -3,9 +3,16 @@
         "asufa",
         "autored",
         "flet",
+        "Holdeeeer",
         "monoclinic",
         "Olex",
+        "outpuuuut",
         "Pickeeeer",
-        "pyautogui"
-    ]
+        "pyautogui",
+        "txtf"
+    ],
+    "python.defaultInterpreterPath": ".venv/bin/python.exe",
+    "code-runner.executorMap": {
+        "python": "C:/Users/asufa/OneDrive/ドキュメント/Python/MakeCiSupport/.venv/Scripts/python.exe -u",
+    }
 }
