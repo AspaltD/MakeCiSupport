@@ -7,3 +7,4 @@ MakeCiSupportApp/__pycache__/frmAppWindow.cpython-314.pyc
 MakeCiSupportApp/__pycache__/mdAutoRun.cpython-314.pyc
 .gitignore
 MakeCiSupportApp/__pycache__/mdEnumClass.cpython-314.pyc
+app/__pycache__/frmAppWindow.cpython-314.pyc

@@ -4,13 +4,13 @@ import re
 from typing import Dict, List, Optional
 import os
 import copy
-import mdEnumClass as en
+import app.mdEnums as en
 import mdAutoRun as ar
 
 filePickers: Dict[en.FilePickerIdx, ft.FilePicker] = {}
 fileData:FileData
 settingData: Dict[str, str] = {}
-OUTPUUUUT_PATH:Path = Path('MakeCiSupportApp/outpuuuut.txt')
+OUTPUUUUT_PATH:Path = Path('app/datatext/outpuuuut.txt')
 
 
 class FileData_Value(List[str]):
@@ -790,7 +790,7 @@ def main(page: ft.Page):
         page.overlay.append(filePickers.get(name))
     
     global settingData
-    settingDataPath = Path('MakeCiSupportApp/makeci_setting.txt')
+    settingDataPath = Path('app/datatext/makeci_setting.txt')
     if Path.is_file(settingDataPath):
         with open(settingDataPath) as f:
             for lineS in f:
