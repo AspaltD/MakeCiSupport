@@ -10,10 +10,77 @@ import mdAutoRun as ar
 import mdTabChangeBar as tcb
 import mdBottomButtons as bb
 
+APP_VER:str = "beta 2.0"
 filePickers: Dict[en.FilePickerIdx, ft.FilePicker] = {}
 fileData:FileData
 settingData: Dict[str, str] = {}
 OUTPUUUUT_PATH:Path = Path('app/datatext/outpuuuut.txt')
+
+
+class SettingData(Dict[en.SettingLabel, str]):
+    def __init__(self):
+        self.settingPath = Path('app/datatext/makeci_setting.txt')
+        for label in en.SettingLabel:
+            self[label] = "None"
+
+        if self.settingPath.is_file():
+            if self._check_version():
+                self.read_setting()
+                return
+        self._make_setting()
+
+    def print_self(self):
+        print("{")
+        for line in self:
+            print(f' {line.value}:\t{self[line]}')
+        print("}")
+
+    def _check_version(self) -> bool:
+        result:bool = False
+        with open(self.settingPath) as f:
+            for lineS in f:
+                lineP = lineS.rstrip().split(sep=';')
+                match lineP[0]:
+                    case en.SettingLabel.APP_VER_TYPE.value:
+                        pass
+                    case en.SettingLabel.APP_VER_NUM.value:
+                        pass
+                    case _: continue
+                if lineP[1] == "None": break
+                if lineP[0] == en.SettingLabel.APP_VER_TYPE.value:
+                ver = lineP[1].split()
+                if ver[0] != "beta": break
+                if int(ver[1]) < 2.0: break
+                result = True
+        return result
+
+    def _make_setting(self):
+        if self.settingPath.is_file(): return
+        if not Path('app/datatext').is_dir():
+            Path.mkdir(Path('app/datatext'))
+        self.settingPath.touch()
+        self[en.SettingLabel.FILE_NAME] = "makeci_setting"
+        self[en.SettingLabel.APP_VERSION] = APP_VER
+
+    def read_setting(self):
+        with open(self.settingPath) as f:
+            for lineS in f:
+                lineP = lineS.rstrip().split(sep=';')
+                if len(lineP) == 0: continue
+                lineP[1] = ';'.join(lineP[1:])
+                for label in en.SettingLabel:
+                    if label.value in lineP[0]:
+                        self[label] = lineP[1]
+                        break
+
+    def write_setting(self):
+        with open(self.settingPath, mode='w') as f:
+            for line in self:
+                outputLine = line.value + self[line] + '\n'
+                f.write(outputLine)
+
+
+
 
 
 class FileData_Value(List[str]):
@@ -648,6 +715,8 @@ def main(page: ft.Page):
         with open(settingDataPath) as f:
             f.write("makeci_setting")
             f.write("app_ver;beta 0.1")
+    
+    test_sett = SettingData()
     
     makeCiSup = MakeCiSupApp()
 

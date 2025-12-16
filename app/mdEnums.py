@@ -1,4 +1,14 @@
-from enum import IntEnum
+from enum import IntEnum, Enum
+from typing import Optional
+
+class SettingLabel(Enum):
+    FILE_NAME = "name"
+    APP_VER_TYPE = "app_ver_type"
+    APP_VER_NUM = "app_ver_num"
+    BUILDER_PATH = "builder_path"
+    CIF_PATH = "cif_path"
+    TXT_PATH = "txt_path"
+
 
 class CellDataLabel(IntEnum):
     STATE = 0
