@@ -4,7 +4,7 @@ import pyautogui as pag
 from typing import List
 import time
 import frmAppWindow as frm
-import app.mdEnums as en
+import mdEnums as en
 from pathlib import Path
 
 class Ci_AutoRun():

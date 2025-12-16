@@ -4,8 +4,9 @@ import re
 from typing import Dict, List, Optional
 import os
 import copy
-import app.mdEnums as en
+import mdEnums as en
 import mdAutoRun as ar
+import mdTabChangeBar as tcb
 
 filePickers: Dict[en.FilePickerIdx, ft.FilePicker] = {}
 fileData:FileData
@@ -34,7 +35,6 @@ class FileData_Value(List[str]):
     
     def get_self(self) -> FileData_Value:
         return copy.deepcopy(self)
-
 
 class FileData(List[FileData_Value]):
     def __init__(self):
@@ -210,70 +210,7 @@ class FileData(List[FileData_Value]):
                 return lastName
         return None
 
-
 fileData = FileData()
-
-
-#*TabChangeBar内でボタンの間に挟む「▼」文字。繰り返し構造のためクラス化してる。
-class Left_DownMarkTxt(ft.Text):
-    def __init__(self):
-        super().__init__(
-            width=180,
-            text_align=ft.TextAlign.CENTER,
-            value="▼"
-        )
-
-#*TabChangeBar内のタブを表すボタンの抽象クラスに当たるもの。
-#*引数にタブ番号と動作設定(動作内容の関係でfrm本体に渡してもらう必要がある)，表示テキストを指定。
-class Left_TabBtn(ft.FilledButton):
-    def __init__(self, tabIdx:en.TabIdx, leftBtnClicked:ft.ControlEvent, text:str):
-        super().__init__(
-            width=150,
-            height=40
-        )
-        self.tabIdx = tabIdx
-        self.on_click = leftBtnClicked
-        self.text = text
-
-class Left_TabBtn_Tab0(Left_TabBtn):
-    def __init__(self, leftBtnClicked:ft.ControlEvent):
-        super().__init__(tabIdx=en.TabIdx.FILE_PATH_SELECT, leftBtnClicked=leftBtnClicked, text="ファイル設定")
-class Left_TabBtn_Tab1(Left_TabBtn):
-    def __init__(self, leftBtnClicked:ft.ControlEvent):
-        super().__init__(en.TabIdx.READ_DATA, leftBtnClicked, "読取結果")
-class Left_TabBtn_Tab2(Left_TabBtn):
-    def __init__(self, leftBtnClicked:ft.ControlEvent):
-        super().__init__(en.TabIdx.BUILDER_LOG, leftBtnClicked, "Builderログ")
-class Left_TabBtn_Tab3(Left_TabBtn):
-    def __init__(self, leftBtnClicked:ft.ControlEvent):
-        super().__init__(en.TabIdx.BUILDER_RESULT, leftBtnClicked, "Builder動作完了")
-
-#*ウィンドウ左側のタブ切り替え用のボタンを配置したコンテナ
-#*引数にボタン動作を要求
-class Left_TabChangeBar(ft.Container):
-    def __init__(self, leftBtnClicked:ft.ControlEvent):
-        super().__init__(
-            border=ft.border.all(1, ft.Colors.BLACK),
-            padding=10,
-            expand=1,
-            bgcolor=ft.Colors.GREY_300
-        )
-
-        self.content = ft.Column(
-            height=520,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=0,
-            expand_loose=True,
-            controls=[
-                Left_TabBtn_Tab0(leftBtnClicked),
-                Left_DownMarkTxt(),
-                Left_TabBtn_Tab1(leftBtnClicked),
-                Left_DownMarkTxt(),
-                Left_TabBtn_Tab2(leftBtnClicked),
-                Left_DownMarkTxt(),
-                Left_TabBtn_Tab3(leftBtnClicked),
-            ]
-        )
 
 class Btm_TabFuncBtn(ft.FilledButton):
     def __init__(self, text:str, workPlaceIdx:en.BtmBtnIdx):
@@ -652,7 +589,7 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
 class MakeCiSupApp(ft.Container):
     def __init__(self):
         super().__init__()
-        self.left_tabChangeBar = Left_TabChangeBar(leftBtnClicked=self.left_btn_event)
+        self.left_tabChangeBar = tcb.Left_TabChangeBar(leftBtnClicked=self.left_btn_event)
         self.cn_tab99 = Cn_Tab99_PlaceHoldeeeer()
         self.cn_tab0 = Cn_Tab0_FilePathSelect()
         self.cn_tab1 = Cn_Tab1_ReadData()
@@ -697,7 +634,6 @@ class MakeCiSupApp(ft.Container):
         self.tab_change(en.TabIdx.FILE_PATH_SELECT)
 
         self.ciAuto = ar.Ci_AutoRun()
-
 
     def tab_change(self, toTabIdx:en.TabIdx):
         for tab in self.cn_tabContents.controls:
