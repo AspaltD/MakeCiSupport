@@ -44,6 +44,15 @@ class TabIdx(IntEnum):
     BUILDER_RESULT = 3
     PLACE_HOLDER = 99
 
+    def get_tab_name(self) -> str:
+        match self.name:
+            case 'FILE_PATH_SELECT': return "ファイル設定"
+            case 'READ_DATA': return "読取結果"
+            case 'BUILDER_LOG': return "Builderログ"
+            case 'BUILDER_RESULT': return "Builder動作完了"
+            case 'PLACE_HOLDER': return "**このタブは非表示タブです。**"
+
+
 class BtmBtnIdx(IntEnum):
     NEXT_TAB = 0
     EXIT_APP = 1
