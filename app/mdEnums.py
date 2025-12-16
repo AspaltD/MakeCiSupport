@@ -59,6 +59,13 @@ class BtmBtnIdx(IntEnum):
     OTHER_FUNC1 = 2
     OTHER_FUNC2 = 3
 
+    def get_btn_def_text(self) -> str:
+        match self.name:
+            case 'NEXT_TAB': return "Next"
+            case 'EXIT_APP': return "AppExit"
+            case 'OTHER_FUNC1': return "Func1"
+            case 'OTHER_FUNC2': return "Func2"
+
 class FilePickerIdx(IntEnum):
     BUILDER_PICK = 0
     CIF_PICK = 1

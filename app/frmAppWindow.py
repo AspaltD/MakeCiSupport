@@ -4,9 +4,11 @@ import re
 from typing import Dict, List, Optional
 import os
 import copy
+
 import mdEnums as en
 import mdAutoRun as ar
 import mdTabChangeBar as tcb
+import mdBottomButtons as bb
 
 filePickers: Dict[en.FilePickerIdx, ft.FilePicker] = {}
 fileData:FileData
@@ -211,99 +213,6 @@ class FileData(List[FileData_Value]):
         return None
 
 fileData = FileData()
-
-class Btm_TabFuncBtn(ft.FilledButton):
-    def __init__(self, text:str, workPlaceIdx:en.BtmBtnIdx):
-        super().__init__(
-            width=120,
-            text=text
-        )
-        self.workPlaceIdx = workPlaceIdx
-
-    def change_property(self, toTabIdx:en.TabIdx):
-        self.disabled = True
-
-class BtmBtn_EXit(Btm_TabFuncBtn):
-    def __init__(self):
-        super().__init__(
-            text="ExitApp",
-            workPlaceIdx=en.BtmBtnIdx.EXIT_APP
-            )
-        self.on_click = lambda _: self.page.window.close()
-
-    def change_property(self, toTabIdx: en.TabIdx):
-        match toTabIdx.name:
-            case 'BUILDER_LOG':
-                self.disabled = True
-            case _:
-                self.disabled = False
-
-class BtmBtn_Next(Btm_TabFuncBtn):
-    def __init__(self):
-        super().__init__("Next", en.BtmBtnIdx.NEXT_TAB)
-
-    def change_property(self, toTabIdx: en.TabIdx):
-        match toTabIdx.name:
-            case 'FILE_PATH_SELECT':
-                self.text = "ReadCIF"
-                self.disabled = False
-            case 'READ_DATA':
-                self.text = "Save&Go"
-                self.disabled = False
-            case 'BUILDER_LOG':
-                self.text = "Stop"
-                self.disabled = False
-            case _:
-                self.text = "Next"
-                self.disabled = True
-class BtmBtn_Func1(Btm_TabFuncBtn):
-    def __init__(self):
-        super().__init__("OtherFunc1", en.BtmBtnIdx.OTHER_FUNC1)
-
-    def change_property(self, toTabIdx: en.TabIdx):
-        match toTabIdx.name:
-            case 'FILE_PATH_SELECT':
-                self.text = "ReadTXT"
-                self.visible = True
-            case 'READ_DATA':
-                self.text = "Save"
-                self.visible = True
-            case _:
-                self.text = "Func1"
-                self.visible = False
-
-class BtmBtn_Func2(Btm_TabFuncBtn):
-    def __init__(self):
-        super().__init__("OtherFunc2", en.BtmBtnIdx.OTHER_FUNC2)
-
-    def change_property(self, toTabIdx: en.TabIdx):
-        match toTabIdx.name:
-            case 'READ_DATA':
-                self.text = "Remove"
-                self.visible = True
-            case _:
-                self.text = "Func1"
-                self.visible = False
-
-
-class Btm_BtnBar(ft.Row):
-    def __init__(self, tabIdx:en.TabIdx):
-        super().__init__(
-            expand=1,
-            alignment=ft.MainAxisAlignment.END
-        )
-        self.tabIdx = tabIdx
-        self.controls:List[Btm_TabFuncBtn] = []
-
-    def add_btmBtn(self, btmBtn:Btm_TabFuncBtn):
-        newBtnList:List[Btm_TabFuncBtn] = []
-        for btn in self.controls:
-            if btmBtn.workPlaceIdx == btn.workPlaceIdx: continue
-            elif btmBtn.workPlaceIdx < btn.workPlaceIdx:
-                newBtnList.append(btmBtn)
-            newBtnList.append(btn)
-        self.controls = newBtnList
-
 
 class Tab_FilePicker_Bar(ft.Row):
     def __init__(self, filePickerIdx:en.FilePickerIdx):
@@ -601,10 +510,10 @@ class MakeCiSupApp(ft.Container):
                 self.cn_tab1
             ]
         )
-        self.btmBtn_Next = BtmBtn_Next()
-        self.btmBtn_Exit = BtmBtn_EXit()
-        self.btmBtn_Func1 = BtmBtn_Func1()
-        self.btmBtn_Func2 = BtmBtn_Func2()
+        self.btmBtn_Next = bb.BtmBtn_Next()
+        self.btmBtn_Exit = bb.BtmBtn_EXit()
+        self.btmBtn_Func1 = bb.BtmBtn_Func1()
+        self.btmBtn_Func2 = bb.BtmBtn_Func2()
         self.btmBtnContents = ft.Row(
             expand=1,
             alignment=ft.MainAxisAlignment.END,
