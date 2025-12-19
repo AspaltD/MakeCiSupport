@@ -10,23 +10,31 @@ import mdAutoRun as ar
 import mdTabChangeBar as tcb
 import mdBottomButtons as bb
 
-APP_VER:str = "beta 2.0"
 filePickers: Dict[en.FilePickerIdx, ft.FilePicker] = {}
 fileData:FileData
-settingData: Dict[str, str] = {}
+settingData:SettingData
 OUTPUUUUT_PATH:Path = Path('app/datatext/outpuuuut.txt')
 
 
 class SettingData(Dict[en.SettingLabel, str]):
     def __init__(self):
         self.settingPath = Path('app/datatext/makeci_setting.txt')
+        self.appVerType = "beta"
+        self.appVerNum = "2.0"
+        self._allowVerNum = 2.0
+
         for label in en.SettingLabel:
             self[label] = "None"
 
         if self.settingPath.is_file():
             if self._check_version():
+                print("read setting_file")
                 self.read_setting()
+                self.print_self()
                 return
+            else:
+                print("setting_file is old version")
+        print("make new setting_file")
         self._make_setting()
 
     def print_self(self):
@@ -36,31 +44,32 @@ class SettingData(Dict[en.SettingLabel, str]):
         print("}")
 
     def _check_version(self) -> bool:
-        result:bool = False
+        verType = "None"
+        verNum = "None"
         with open(self.settingPath) as f:
             for lineS in f:
                 lineP = lineS.rstrip().split(sep=';')
                 match lineP[0]:
                     case en.SettingLabel.APP_VER_TYPE.value:
-                        pass
+                        verType = lineP[1]
                     case en.SettingLabel.APP_VER_NUM.value:
-                        pass
+                        verNum = lineP[1]
                     case _: continue
-                if lineP[1] == "None": break
-                if lineP[0] == en.SettingLabel.APP_VER_TYPE.value:
-                ver = lineP[1].split()
-                if ver[0] != "beta": break
-                if int(ver[1]) < 2.0: break
-                result = True
-        return result
+        if verType == "None": return False
+        if verNum == "None": return False
+        if verType is self.appVerType: return False
+        if float(verNum) < self._allowVerNum: return False
+        return True
 
     def _make_setting(self):
-        if self.settingPath.is_file(): return
         if not Path('app/datatext').is_dir():
             Path.mkdir(Path('app/datatext'))
-        self.settingPath.touch()
+        if not self.settingPath.is_file():
+            self.settingPath.touch()
         self[en.SettingLabel.FILE_NAME] = "makeci_setting"
-        self[en.SettingLabel.APP_VERSION] = APP_VER
+        self[en.SettingLabel.APP_VER_TYPE] = self.appVerType
+        self[en.SettingLabel.APP_VER_NUM] = self.appVerNum
+        self.write_setting()
 
     def read_setting(self):
         with open(self.settingPath) as f:
@@ -69,18 +78,15 @@ class SettingData(Dict[en.SettingLabel, str]):
                 if len(lineP) == 0: continue
                 lineP[1] = ';'.join(lineP[1:])
                 for label in en.SettingLabel:
-                    if label.value in lineP[0]:
+                    if label.value == lineP[0]:
                         self[label] = lineP[1]
                         break
 
     def write_setting(self):
         with open(self.settingPath, mode='w') as f:
             for line in self:
-                outputLine = line.value + self[line] + '\n'
+                outputLine = line.value + ";" + self[line] + '\n'
                 f.write(outputLine)
-
-
-
 
 
 class FileData_Value(List[str]):
@@ -279,8 +285,6 @@ class FileData(List[FileData_Value]):
                 return lastName
         return None
 
-fileData = FileData()
-
 class Tab_FilePicker_Bar(ft.Row):
     def __init__(self, filePickerIdx:en.FilePickerIdx):
         super().__init__(
@@ -289,9 +293,13 @@ class Tab_FilePicker_Bar(ft.Row):
         self.filePickerIdx = filePickerIdx
         self.filePickeeeer = filePickers[self.filePickerIdx]
         self.filePickeeeer.on_result = self.filePicker_event
-        self.filePath:Path = Path()
+        self.filePath:Optional[Path] = None
 
-        self.pathTxtf = ft.TextField(expand=9, dense=True, on_blur=self.txtf_onBlur_event)
+        self.pathTxtf = ft.TextField(
+            expand=9,
+            dense=True,
+            hint_text=self.filePickerIdx.value,
+            on_blur=self.txtf_onBlur_event)
         self.controls = [
             self.pathTxtf,
             ft.FilledButton(
@@ -300,21 +308,36 @@ class Tab_FilePicker_Bar(ft.Row):
                 on_click=lambda _: self.filePickeeeer.pick_files(allowed_extensions=[self.filePickerIdx.get_fileType()])
             )
         ]
+        label = self.filePickerIdx.get_setting_label()
+        if label is None: return
+        if settingData[label] == "None": return
+        self.path_change(settingData[label])
 
     def get_path(self)->Optional[Path]:
+        if self.filePath is None: return None
         return Path(self.filePath)
 
-    def path_change(self, changedStr:Optional[str]=None):
+    def path_change(self, changedStr:Optional[str]):
         if changedStr is None:
             self.pathTxtf.value = ""
+            self.filePath = None
         else:
             self.pathTxtf.value = changedStr.replace(os.sep, '/').strip('"')
         value = Path(self.pathTxtf.value)
         self.filePath = value
-        if Path.exists(value):
+        settingLabel = self.filePickerIdx.get_setting_label()
+        global settingData
+        if Path.is_file(value):
+            self.pathTxtf.error_text = None
+            if not settingLabel is None:
+                settingData[settingLabel] = str(value)
             print(f"Selected files:name={value.name}")
             print(f"Selected files:{value.resolve()}")
         else:
+            self.filePath = None
+            self.pathTxtf.error_text = "is not true path"
+            if not settingLabel is None:
+                settingData[settingLabel] = "None"
             print("is not filePath")
 
     def txtf_onBlur_event(self, e:ft.ControlEvent):
@@ -375,8 +398,6 @@ class Cn_Tab0_FilePathSelect(Cn_TabContainer):
             self.pickOutput
         ])
         #! ここで設定ファイルにBuilderのデータがあれば呼び出している。将来的には関数として独立させたい。
-        if "builder_path" in settingData:
-            self.pickBuilder.path_change(settingData['builder_path'])
 
 class Tab1_TxtF_CellData(ft.TextField):
     def __init__(self, cell_data_label:en.CellDataLabel, label:str, hint_text:str, read_only:bool=True):
@@ -686,6 +707,7 @@ class ExitConfirmDialog(ft.AlertDialog):
 
     def yes_clicked(self, e):
         self.page.close(self)
+        settingData.write_setting()
         #!ここに終了時のsave動作などを追加
         self.page.window.destroy()
 
@@ -702,22 +724,10 @@ def main(page: ft.Page):
         page.overlay.append(filePickers.get(name))
     
     global settingData
-    settingDataPath = Path('app/datatext/makeci_setting.txt')
-    if Path.is_file(settingDataPath):
-        with open(settingDataPath) as f:
-            for lineS in f:
-                lineP = lineS.rstrip().split(sep=';')
-                if len(lineP) <= 1: continue
-                lineP[1] = ';'.join(lineP[1:])
-                settingData[lineP[0]] = lineP[1]
-        print(settingData)
-    else:
-        with open(settingDataPath) as f:
-            f.write("makeci_setting")
-            f.write("app_ver;beta 0.1")
-    
-    test_sett = SettingData()
-    
+    settingData = SettingData()
+    global fileData
+    fileData = FileData()
+
     makeCiSup = MakeCiSupApp()
 
     def window_close_event(e):

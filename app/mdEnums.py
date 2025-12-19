@@ -76,11 +76,11 @@ class BtmBtnIdx(IntEnum):
             case 'OTHER_FUNC1': return "Func1"
             case 'OTHER_FUNC2': return "Func2"
 
-class FilePickerIdx(IntEnum):
-    BUILDER_PICK = 0
-    CIF_PICK = 1
-    OUTPUT_PICK = 2
-    OUTPUT_SAVE = 3
+class FilePickerIdx(Enum):
+    BUILDER_PICK = "Builder.exe Path"
+    CIF_PICK = "CIF File Path"
+    OUTPUT_PICK = "Text File Path"
+    OUTPUT_SAVE = "Output File Path"
 
     def get_fileType(self)->str:
         match self.name:
@@ -92,3 +92,10 @@ class FilePickerIdx(IntEnum):
                 return "txt"
             case 'OUTPUT_SAVE':
                 return "txt"
+
+    def get_setting_label(self) -> Optional[SettingLabel]:
+        match self.name:
+            case 'BUILDER_PICK': return SettingLabel.BUILDER_PATH
+            case 'CIF_PICK': return SettingLabel.CIF_PATH
+            case 'OUTPUT_PICK': return SettingLabel.TXT_PATH
+            case _: return None
