@@ -1,11 +1,16 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+block_cipher = None
+
+add_datas = [
+    ('app/statics/*', 'app/statics')
+]
 
 a = Analysis(
-    ['frmAppWindow.py'],
-    pathex=[],
+    ['app/frmAppWindow.py'],
+    pathex=['app'],
     binaries=[],
-    datas=[],
+    datas=add_datas,
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -14,7 +19,7 @@ a = Analysis(
     noarchive=False,
     optimize=0,
 )
-pyz = PYZ(a.pure)
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 exe = EXE(
     pyz,
@@ -35,5 +40,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='MakeCiSupportApp/makeci_w.ico'
+    icon='app/statics/makeci_icon_w.ico'
 )

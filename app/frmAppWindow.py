@@ -13,12 +13,12 @@ import mdBottomButtons as bb
 filePickers: Dict[en.FilePickerIdx, ft.FilePicker] = {}
 fileData:FileData
 settingData:SettingData
-OUTPUUUUT_PATH:Path = Path('app/datatext/outpuuuut.txt')
+OUTPUUUUT_PATH:Path = Path('./datatext/outpuuuut.txt')
 
 
 class SettingData(Dict[en.SettingLabel, str]):
     def __init__(self):
-        self.settingPath = Path('app/datatext/makeci_setting.txt')
+        self.settingPath = Path('./datatext/makeci_setting.txt')
         self.appVerType = "beta"
         self.appVerNum = "2.0"
         self._allowVerNum = 2.0
@@ -62,8 +62,8 @@ class SettingData(Dict[en.SettingLabel, str]):
         return True
 
     def _make_setting(self):
-        if not Path('app/datatext').is_dir():
-            Path.mkdir(Path('app/datatext'))
+        if not Path('./datatext').is_dir():
+            Path.mkdir(Path('./datatext'))
         if not self.settingPath.is_file():
             self.settingPath.touch()
         self[en.SettingLabel.FILE_NAME] = "makeci_setting"
@@ -599,7 +599,7 @@ class MakeCiSupApp(ft.Container):
             ]
         )
         self.btmBtn_Next = bb.BtmBtn_Next()
-        self.btmBtn_Exit = bb.BtmBtn_EXit()
+        self.btmBtn_Exit = bb.BtmBtn_EXit(self.btmBtn_exit_event)
         self.btmBtn_Func1 = bb.BtmBtn_Func1()
         self.btmBtn_Func2 = bb.BtmBtn_Func2()
         self.btmBtnContents = ft.Row(
@@ -661,6 +661,9 @@ class MakeCiSupApp(ft.Container):
         self.tab_change(e.control.tabIdx)
         self.update()
     
+    def btmBtn_exit_event(self, e):
+        self.page.window.close()
+
     def btmBtn_tab0_readCIF_event(self, e):
         if self.cn_tab0.pickBuilder.check_true_path() is False: return
         if self.cn_tab0.pickCIF.check_true_path() is False: return

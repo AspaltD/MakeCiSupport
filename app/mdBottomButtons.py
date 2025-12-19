@@ -14,11 +14,11 @@ class Btm_TabFuncBtn(ft.FilledButton):
         self.disabled = True
 
 class BtmBtn_EXit(Btm_TabFuncBtn):
-    def __init__(self):
+    def __init__(self, exit_event:ft.ControlEvent):
         super().__init__(
             work_place_idx=en.BtmBtnIdx.EXIT_APP
             )
-        self.on_click = lambda: self.page.window.close()
+        self.on_click = exit_event
 
     def change_property(self, toTabIdx: en.TabIdx):
         match toTabIdx.name:

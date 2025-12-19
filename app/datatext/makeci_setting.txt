@@ -1,6 +1,0 @@
-name;makeci_setting
-app_ver_type;beta
-app_ver_num;2.0
-builder_path;C:\Program Files (x86)\PrimeColor Software\Caesar 1.0\bin\builder.exe
-cif_path;None
-txt_path;None

@@ -1,10 +1,10 @@
 app.log
 Builder.log
-__pycache__/mdAutoTest.cpython-314.pyc
+__pycache__/*
 outpuuuut.txt
 .vscode/settings.json
-MakeCiSupportApp/__pycache__/frmAppWindow.cpython-314.pyc
-MakeCiSupportApp/__pycache__/mdAutoRun.cpython-314.pyc
-.gitignore
-MakeCiSupportApp/__pycache__/mdEnumClass.cpython-314.pyc
-app/__pycache__/frmAppWindow.cpython-314.pyc
+MakeCiSupportApp/__pycache__/*
+app/__pycache__/*
+datatext/*
+dist/*
+build/*
