@@ -4,6 +4,7 @@ import re
 from typing import Dict, List, Optional
 import os
 import copy
+import sys
 
 import mdEnums as en
 import mdAutoRun as ar
@@ -355,15 +356,12 @@ class Tab_FilePicker_Bar(ft.Row):
 class Tab0_FPBar_Builder(Tab_FilePicker_Bar):
     def __init__(self):
         super().__init__(filePickerIdx=en.FilePickerIdx.BUILDER_PICK)
-        self.pathTxtf.hint_text = "Builder.exe Path"
 class Tab0_FPBar_CIF(Tab_FilePicker_Bar):
     def __init__(self):
         super().__init__(filePickerIdx=en.FilePickerIdx.CIF_PICK)
-        self.pathTxtf.hint_text = "CIF File Path"
 class Tab0_FPBar_Output(Tab_FilePicker_Bar):
     def __init__(self):
         super().__init__(filePickerIdx=en.FilePickerIdx.OUTPUT_PICK)
-        self.pathTxtf.hint_text = "Output File Path"
 
 #* タブのコンテナ。
 class Cn_TabContainer(ft.Container):
@@ -582,6 +580,57 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
             lastIdx = self.selectedRows.remove(delIdx)
         self.update()
 
+class Tab2_LogFIeld(ft.TextField):
+    def __init__(self):
+        super().__init__(
+            multiline=True,
+            read_only=True,
+            expand=True
+        )
+        pass
+
+class Tab2_LogView(ft.ListView):
+    def __init__(self):
+        super().__init__(
+            expand=True,
+            auto_scroll=True,
+            spacing=2
+        )
+    
+    def log_write(self, message:str, level: str):
+        if not message.strip(): return
+
+        color_map = {
+            "DEBUG": ft.Colors.GREY,
+            "INFO": ft.Colors.WHITE,
+            "WARNING": ft.Colors.YELLOW,
+            "ERROR": ft.Colors.RED,
+            "CRITICAL": ft.Colors.RED_400
+        }
+
+        self.controls.append(
+            ft.Text(
+                message.rstrip(),
+                font_family='monospace',
+                size=13,
+                color=color_map.get(level, ft.Colors.BLUE_50),
+            )
+        )
+        self.update()
+
+class Cn_Tab2_BuilderLog(Cn_TabContainer):
+    def __init__(self):
+        super().__init__(tabIdx=en.TabIdx.BUILDER_LOG, defVisible=False)
+        self.expand = True
+        self.logField = Tab2_LogFIeld()
+        self.content = ft.Column(
+            expand=True,
+            controls=[
+                self.logField
+            ],
+            scroll=ft.ScrollMode.ALWAYS
+        )
+
 
 class MakeCiSupApp(ft.Container):
     def __init__(self):
@@ -590,12 +639,14 @@ class MakeCiSupApp(ft.Container):
         self.cn_tab99 = Cn_Tab99_PlaceHoldeeeer()
         self.cn_tab0 = Cn_Tab0_FilePathSelect()
         self.cn_tab1 = Cn_Tab1_ReadData()
+        self.cn_tab2 = Cn_Tab2_BuilderLog()
         self.cn_tabContents = ft.Stack(
             expand=10,
             controls=[
                 self.cn_tab99,
                 self.cn_tab0,
-                self.cn_tab1
+                self.cn_tab1,
+                self.cn_tab2
             ]
         )
         self.btmBtn_Next = bb.BtmBtn_Next()
@@ -634,6 +685,7 @@ class MakeCiSupApp(ft.Container):
 
     def tab_change(self, toTabIdx:en.TabIdx):
         for tab in self.cn_tabContents.controls:
+            if not isinstance(tab, Cn_TabContainer): continue
             if tab.tabIdx == toTabIdx: tab.visible = True
             elif tab.tabIdx == 99: pass
             else: tab.visible = False
