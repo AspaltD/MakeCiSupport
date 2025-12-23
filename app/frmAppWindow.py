@@ -4,7 +4,6 @@ import re
 from typing import Dict, List, Optional
 import os
 import copy
-import sys
 import logging
 
 import mdEnums as en
@@ -15,6 +14,7 @@ import mdBottomButtons as bb
 filePickers: Dict[en.FilePickerIdx, ft.FilePicker] = {}
 fileData:FileData
 settingData:SettingData
+appLogger:logging.Logger
 OUTPUUUUT_PATH:Path = Path('./datatext/outpuuuut.txt')
 
 
@@ -368,7 +368,7 @@ class Tab0_FPBar_Output(Tab_FilePicker_Bar):
 class Cn_TabContainer(ft.Container):
     def __init__(self, tabIdx:en.TabIdx, defVisible:bool):
         super().__init__(
-            expand=10,
+            expand=True,
             padding=10,
             bgcolor=ft.Colors.GREY_50,
             border=ft.border.all(1, ft.Colors.random()),
@@ -581,15 +581,6 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
             lastIdx = self.selectedRows.remove(delIdx)
         self.update()
 
-class Tab2_LogFIeld(ft.TextField):
-    def __init__(self):
-        super().__init__(
-            multiline=True,
-            read_only=True,
-            expand=True
-        )
-        pass
-
 class Tab2_LogView(ft.ListView):
     def __init__(self):
         super().__init__(
@@ -599,6 +590,7 @@ class Tab2_LogView(ft.ListView):
         )
     
     def log_write(self, message:str, level: str):
+        #print(message)
         if not message.strip(): return
 
         color_map = {
@@ -611,7 +603,7 @@ class Tab2_LogView(ft.ListView):
 
         self.controls.append(
             ft.Text(
-                message.rstrip(),
+                value=message.rstrip(),
                 font_family='monospace',
                 size=13,
                 color=color_map.get(level, ft.Colors.BLUE_50),
@@ -632,35 +624,34 @@ class TabLogHandler(logging.Handler):
 
 class Cn_Tab2_BuilderLog(Cn_TabContainer):
     def __init__(self):
-        super().__init__(tabIdx=en.TabIdx.BUILDER_LOG, defVisible=False)
-        self.expand = True
+        super().__init__(tabIdx=en.TabIdx.BUILDER_LOG, defVisible=True)
+        self.bgcolor = ft.Colors.BLACK
+        #self.margin = 10
         self.logView = Tab2_LogView()
-        self.content = ft.Column(
-            expand=True,
-            controls=[
-                self.logView
-            ],
-            scroll=ft.ScrollMode.ALWAYS
-        )
+        self.content = self.logView
 
 
 class MakeCiSupApp(ft.Container):
     def __init__(self):
-        super().__init__()
+        super().__init__(
+            expand=True,
+        )
+        self.content = ft.Row(expand=True, controls=[])
         self.left_tabChangeBar = tcb.Left_TabChangeBar(leftBtnClicked=self.left_btn_event)
+        self.right_tabBase = ft.Column(expand=3, spacing=2, controls=[])
+        self.cn_tabContents = ft.Stack(expand=10, controls=[])
+
         self.cn_tab99 = Cn_Tab99_PlaceHoldeeeer()
         self.cn_tab0 = Cn_Tab0_FilePathSelect()
         self.cn_tab1 = Cn_Tab1_ReadData()
         self.cn_tab2 = Cn_Tab2_BuilderLog()
-        self.cn_tabContents = ft.Stack(
-            expand=10,
-            controls=[
+        self.cn_tabContents.controls = [
                 self.cn_tab99,
+                self.cn_tab2,
                 self.cn_tab0,
                 self.cn_tab1,
-                self.cn_tab2
             ]
-        )
+        self.right_tabBase.controls.append(self.cn_tabContents)
         self.btmBtn_Next = bb.BtmBtn_Next()
         self.btmBtn_Exit = bb.BtmBtn_EXit(self.btmBtn_exit_event)
         self.btmBtn_Func1 = bb.BtmBtn_Func1()
@@ -675,22 +666,12 @@ class MakeCiSupApp(ft.Container):
                 self.btmBtn_Next
             ]
         )
-        self.right_tabBase = ft.Column(
-            height=540,
-            expand=3,
-            spacing=2,
-            controls=[
-                self.cn_tabContents,
-                self.btmBtnContents
-            ]
-        )
+        self.right_tabBase.controls.append(self.btmBtnContents)
 
-        self.content = ft.Row(
-            controls=[
+        self.content.controls = [
                 self.left_tabChangeBar,
                 self.right_tabBase
             ]
-        )
         self.tab_change(en.TabIdx.FILE_PATH_SELECT)
 
         self.ciAuto = ar.Ci_AutoRun()
@@ -700,6 +681,7 @@ class MakeCiSupApp(ft.Container):
             if not isinstance(tab, Cn_TabContainer): continue
             if tab.tabIdx == toTabIdx: tab.visible = True
             elif tab.tabIdx == 99: pass
+            elif tab.tabIdx == 2: pass
             else: tab.visible = False
         for btn in self.btmBtnContents.controls:
             btn.change_property(toTabIdx)
@@ -750,6 +732,7 @@ class MakeCiSupApp(ft.Container):
         self.tab_change(en.TabIdx.BUILDER_LOG)
         self.update()
         self.ciAuto.auto_atom_info_insert(self.cn_tab0.pickBuilder.get_path(), fileData)
+        self.page.window.to_front()
     def btmBtn_tab1_save_event(self, e):
         if not re.match('FileData_.*', fileData[0][0]): return
         self.cn_tab1.commit_fileData()
@@ -836,18 +819,20 @@ def main(page: ft.Page):
     
     page.window.prevent_close = True
     page.window.on_event = window_close_event
-
     page.add(makeCiSup)
     page.window.center()
+    #page.window.always_on_top = True
     page.update()
-
-    logger = create_app_logger(
+    
+    global appLogger
+    appLogger = create_app_logger(
         name="myapp",
         terminal_view=makeCiSup.cn_tab2.logView,
         log_file="./datatext/myapp.log",
         )
     
-    logger.info("Application started")
+    appLogger.info("Application started")
+    
 
 
 if __name__ == '__main__':

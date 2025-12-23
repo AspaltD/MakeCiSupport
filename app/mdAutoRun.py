@@ -54,9 +54,11 @@ class Ci_AutoRun():
         #Space Group
         combo2 = crystal_dlg.child_window(auto_id="1214", control_type="ComboBox").wrapper_object()
         #! ここで格子グループの選択。現状光ストレージの格子専用
-        if insertFileData.search_get_value_single(en.CellDataLabel.SPACE_GROUP_IT_NUM)[-1] != "14": return
-        if insertFileData.search_get_value_single(en.CellDataLabel.SPACE_GROUP_NAME)[-1] != "P_1_21/c_1":return
-        spaceGroup = "P2(1)/C #14 AXIS B CHOICE 1"
+        rightStorage:bool = True
+        if insertFileData.search_get_value_single(en.CellDataLabel.SPACE_GROUP_IT_NUM)[-1] != "14": rightStorage = False
+        if insertFileData.search_get_value_single(en.CellDataLabel.SPACE_GROUP_NAME)[-1] != "P_1_21/c_1": rightStorage = False
+        if rightStorage: spaceGroup = "P2(1)/C #14 AXIS B CHOICE 1"
+        else: spaceGroup = "unknown"
         combo2.select(spaceGroup)
         print(f"Space Group: {spaceGroup}")
         #格子定数
@@ -69,8 +71,14 @@ class Ci_AutoRun():
         pag.write(insertFileData.search_get_value_branch(en.CellDataLabel.CELL_LENGTH, "b")[-1])
         pag.press('tab')
         pag.write(insertFileData.search_get_value_branch(en.CellDataLabel.CELL_LENGTH, "c")[-1])
+        if not rightStorage:
+            pag.press('tab')
+            pag.write(insertFileData.search_get_value_branch(en.CellDataLabel.CELL_ANGLE, "alpha")[-1])
         pag.press('tab')
         pag.write(insertFileData.search_get_value_branch(en.CellDataLabel.CELL_ANGLE, "beta")[-1])
+        if not rightStorage:
+            pag.press('tab')
+            pag.write(insertFileData.search_get_value_branch(en.CellDataLabel.CELL_ANGLE, "alpha")[-1])
         print("insert cell info.")
 
         #原子座標
@@ -103,9 +111,10 @@ class Ci_AutoRun():
         print("Atoms insert fin.")
         time.sleep(0.2)
         pag.press('enter')
-        pag.press('tab',4)
-        time.sleep(0.2)
-        pag.press('enter')
+        if rightStorage:
+            pag.press('tab',4)
+            time.sleep(0.2)
+            pag.press('enter')
         print("AutoRun completed.")
 
 
