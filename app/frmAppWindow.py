@@ -641,7 +641,10 @@ class Cn_Tab2_BuilderLog(Cn_TabContainer):
         self.logView = Tab2_LogView()
         self.content = self.logView
 
-
+class Cn_Tab3_BuilderResult(Cn_TabContainer):
+    def __init__(self):
+        super().__init__(tabIdx=en.TabIdx.BUILDER_RESULT, defVisible=False)
+        self.content = ft.Placeholder(color=ft.Colors.random())
 class MakeCiSupApp(ft.Container):
     def __init__(self):
         super().__init__(
@@ -656,11 +659,13 @@ class MakeCiSupApp(ft.Container):
         self.cn_tab0 = Cn_Tab0_FilePathSelect()
         self.cn_tab1 = Cn_Tab1_ReadData()
         self.cn_tab2 = Cn_Tab2_BuilderLog()
+        self.cn_tab3 = Cn_Tab3_BuilderResult()
         self.cn_tabContents.controls = [
                 self.cn_tab99,
                 self.cn_tab2,
                 self.cn_tab0,
                 self.cn_tab1,
+                self.cn_tab3,
             ]
         self.right_tabBase.controls.append(self.cn_tabContents)
         self.btmBtn_Next = bb.BtmBtn_Next()
@@ -744,6 +749,8 @@ class MakeCiSupApp(ft.Container):
         self.update()
         self.ciAuto.auto_atom_info_insert(self.cn_tab0.pickBuilder.get_path(), fileData)
         self.page.window.to_front()
+        self.tab_change(en.TabIdx.BUILDER_RESULT)
+        self.update()
     def btmBtn_tab1_save_event(self, e):
         if not re.match('FileData_.*', fileData[0][0]): return
         self.cn_tab1.commit_fileData()
