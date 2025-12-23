@@ -30,20 +30,21 @@ class SettingData(Dict[en.SettingLabel, str]):
 
         if self.settingPath.is_file():
             if self._check_version():
-                print("read setting_file")
+                appLogger.info("read setting_file")
                 self.read_setting()
                 self.print_self()
                 return
             else:
-                print("setting_file is old version")
-        print("make new setting_file")
+                appLogger.info("setting_file is old version")
+        appLogger.info("make new setting_file")
         self._make_setting()
 
     def print_self(self):
-        print("{")
+        appLogger.info("{")
         for line in self:
-            print(f' {line.value}:\t{self[line]}')
-        print("}")
+            line_str:str = f'  {line.value}:\t{self[line]}'
+            appLogger.info(line_str)
+        appLogger.info("}")
 
     def _check_version(self) -> bool:
         verType = "None"
@@ -106,7 +107,7 @@ class FileData_Value(List[str]):
 
     def append(self, object: str) -> None:
         if not self.check_label_len():
-            print("This value is max length.")
+            appLogger.info("This value is max length.")
             return
         return super().append(object)
     
@@ -122,10 +123,10 @@ class FileData(List[FileData_Value]):
 
     def print_data(self):
         i = -1
-        print("idx: value")
+        appLogger.info("idx: value")
         for value in self:
             i += 1
-            print(f'{i}: {value}')
+            appLogger.info(f'{i}: {value}')
 
     def search_get_value_single(self, cell_data_label:en.CellDataLabel) -> Optional[FileData_Value]:
         if cell_data_label == en.CellDataLabel.ATOM: return None
@@ -162,11 +163,11 @@ class FileData(List[FileData_Value]):
                 i += 1
                 line = lineS.strip()
                 if i >= 450:
-                    print("readline is over.(400 lines)")
+                    appLogger.info("readline is over.(400 lines)")
                     return False
                 if i == 0:
                     if not cifPath.stem.lower() in line:
-                        print("file is not compleat by Olex2-1.5")
+                        appLogger.info("file is not compleat by Olex2-1.5")
                         return False
                     self.append_value(en.CellDataLabel.FILE_NAME, "fileName", line)
                     continue
@@ -190,8 +191,8 @@ class FileData(List[FileData_Value]):
                     continue
                 elif "loop_" in line:
                     if atoms:
-                        print("read finished")
-                        print("i: " + str(i))
+                        appLogger.info("read finished")
+                        appLogger.info("i: " + str(i))
                         break
                     else:
                         atoms = False
@@ -233,11 +234,11 @@ class FileData(List[FileData_Value]):
                 i += 1
                 line = lineS.strip()
                 if i >= 200:
-                    print("readline is over.(200)")
+                    appLogger.info("readline is over.(200)")
                     return False
                 if i == 0:
                     if not re.match('MakeCi_.*', line):
-                        print("This txt_file is not output_file.")
+                        appLogger.info("This txt_file is not output_file.")
                         return False
                     else: continue
 
@@ -248,7 +249,7 @@ class FileData(List[FileData_Value]):
                         break
                 for data in lineP:
                     self[-1].append(data)
-            print(f"end_line: {i}")
+            appLogger.info(f"end_line: {i}")
         self.print_data()
         self.save_outpuuuut_file()
         return True
@@ -310,6 +311,9 @@ class Tab_FilePicker_Bar(ft.Row):
                 on_click=lambda _: self.filePickeeeer.pick_files(allowed_extensions=[self.filePickerIdx.get_fileType()])
             )
         ]
+        #self.set_init()
+
+    def set_init(self):
         label = self.filePickerIdx.get_setting_label()
         if label is None: return
         if settingData[label] == "None": return
@@ -333,14 +337,14 @@ class Tab_FilePicker_Bar(ft.Row):
             self.pathTxtf.error_text = None
             if not settingLabel is None:
                 settingData[settingLabel] = str(value)
-            print(f"Selected files:name={value.name}")
-            print(f"Selected files:{value.resolve()}")
+            appLogger.info(f"Selected files:name={value.name}")
+            appLogger.info(f"Selected files:{value.resolve()}")
         else:
             self.filePath = None
             self.pathTxtf.error_text = "is not true path"
             if not settingLabel is None:
                 settingData[settingLabel] = "None"
-            print("is not filePath")
+            appLogger.info("is not filePath")
 
     def txtf_onBlur_event(self, e:ft.ControlEvent):
         self.path_change(e.control.value)
@@ -388,15 +392,22 @@ class Cn_Tab0_FilePathSelect(Cn_TabContainer):
         self.pickCIF = Tab0_FPBar_CIF()
         self.pickOutput = Tab0_FPBar_Output()
 
-        self.content = ft.Column([
+        self.control:List[ft.Control] = [
             ft.Text("Builder Path"),
             self.pickBuilder,
             ft.Text("CIF File Path"),
             self.pickCIF,
-            ft.Text("Output File Path"),
+            ft.Text("Text File Path"),
             self.pickOutput
-        ])
-        #! ここで設定ファイルにBuilderのデータがあれば呼び出している。将来的には関数として独立させたい。
+        ]
+
+        self.content = ft.Column(controls=self.control)
+
+    def set_txtf_init(self):
+        for cont in self.control:
+            if not isinstance(cont, Tab_FilePicker_Bar): continue
+            cont.set_init()
+        self.update()
 
 class Tab1_TxtF_CellData(ft.TextField):
     def __init__(self, cell_data_label:en.CellDataLabel, label:str, hint_text:str, read_only:bool=True):
@@ -505,7 +516,7 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
                 else:
                     return
             elif i == 400:
-                print("list length is over(400)")
+                appLogger.info("list length is over(400)")
                 return
             else:
                 atom:bool = True
@@ -539,7 +550,7 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
         else:
             e.control.selected = True
             self.selectedRows.append(e.control.data)
-        print(self.selectedRows)
+        appLogger.info(self.selectedRows)
         self.update()
 
     def commit_fileData(self):
@@ -563,7 +574,7 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
                 self.outputPath = Path(e.path)
             else:
                 self.outputPath = Path(e.path+".txt")
-            print(self.outputPath)
+            appLogger.info(self.outputPath)
             self.commit_fileData()
             fileData.save_output_file(self.outputPath)
         self.update()
@@ -577,7 +588,7 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
                 if row.data == delIdx:
                     lastData = row.cells
                     self.readTable.rows.remove(row)
-                    print(lastData)
+                    appLogger.info(lastData)
             lastIdx = self.selectedRows.remove(delIdx)
         self.update()
 
@@ -590,12 +601,12 @@ class Tab2_LogView(ft.ListView):
         )
     
     def log_write(self, message:str, level: str):
-        #print(message)
+        #appLogger.info(message)
         if not message.strip(): return
 
         color_map = {
             "DEBUG": ft.Colors.GREY,
-            "INFO": ft.Colors.WHITE,
+            "INFO": ft.Colors.GREY_300,
             "WARNING": ft.Colors.YELLOW,
             "ERROR": ft.Colors.RED,
             "CRITICAL": ft.Colors.RED_400
@@ -804,10 +815,7 @@ def main(page: ft.Page):
         filePickers[name] = ft.FilePicker()
         page.overlay.append(filePickers.get(name))
     
-    global settingData
-    settingData = SettingData()
-    global fileData
-    fileData = FileData()
+
 
     makeCiSup = MakeCiSupApp()
 
@@ -830,8 +838,14 @@ def main(page: ft.Page):
         terminal_view=makeCiSup.cn_tab2.logView,
         log_file="./datatext/myapp.log",
         )
-    
     appLogger.info("Application started")
+    global settingData
+    settingData = SettingData()
+    global fileData
+    fileData = FileData()
+    
+    makeCiSup.cn_tab0.set_txtf_init()
+    makeCiSup.ciAuto.set_appLogger(appLogger)
     
 
 

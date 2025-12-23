@@ -6,10 +6,17 @@ import time
 import frmAppWindow as frm
 import mdEnums as en
 from pathlib import Path
+from logging import Logger
 
 class Ci_AutoRun():
     def __init__(self):
         self.stopRun:bool = False
+        self.appLogger:Logger
+    
+    def set_appLogger(self, app_logger:Logger):
+        self.appLogger = app_logger
+        self.appLogger.debug("Ci_AutoRun logger set")
+
 
     def auto_atom_info_insert(self, builder_path:Path, file_data:frm.FileData):
         insertFileData = file_data
@@ -25,16 +32,16 @@ class Ci_AutoRun():
         #既存ならconnect，新規ならstart
         try:
             app.connect(title="CAESAR / Builder")
-            print("app_connect")
+            self.appLogger.info("app_connect")
         except:
             app = app.start(str(builder_path))
-            print("app_start")
+            self.appLogger.info("app_start")
 
         main_win = app.window(title="CAESAR / Builder", control_type="Window")
         main_win.wrapper_object()
         main_win.set_focus()
         #main_win.move_window(x=-100, y=-100)
-        print("main_win got.")
+        self.appLogger.info("main_win got.")
 
         if self.stopRun: return
         main_win.type_keys('%f')
@@ -45,7 +52,7 @@ class Ci_AutoRun():
         crystal_dlg.wrapper_object()
         #crystal_dlg.wait("exists", timeout=3)
         #crystal_dlg.set_focus()
-        print("crystal_dlg opened.")
+        self.appLogger.info("crystal_dlg opened.")
 
         #?ここから格子情報の入力
         if self.stopRun: return
@@ -60,7 +67,7 @@ class Ci_AutoRun():
         if rightStorage: spaceGroup = "P2(1)/C #14 AXIS B CHOICE 1"
         else: spaceGroup = "unknown"
         combo2.select(spaceGroup)
-        print(f"Space Group: {spaceGroup}")
+        self.appLogger.info(f"Space Group: {spaceGroup}")
         #格子定数
         if self.stopRun: return
         crystal_dlg.child_window(
@@ -79,7 +86,7 @@ class Ci_AutoRun():
         if not rightStorage:
             pag.press('tab')
             pag.write(insertFileData.search_get_value_branch(en.CellDataLabel.CELL_ANGLE, "alpha")[-1])
-        print("insert cell info.")
+        self.appLogger.info("insert cell info.")
 
         #原子座標
         if self.stopRun: return
@@ -87,11 +94,11 @@ class Ci_AutoRun():
         atom_dlg = crystal_dlg.child_window(title="Atom Positions",control_type="Window")
         atom_dlg.wrapper_object()
         #atom_dlg.wait("exists", timeout=3)
-        print("atom_dlg opened")
+        self.appLogger.info("atom_dlg opened")
             #下スクロールボタンの座標を取得
         atom_dlg.child_window(title="1 行下", auto_id="DownButton", control_type="Button").click_input()
         x_down,y_down = pag.position()
-        print(f'x_down: {x_down}, y: {y_down}')
+        self.appLogger.info(f'x_down: {x_down}, y: {y_down}')
         if self.stopRun: return
         atom_dlg_handle = atom_dlg.handle
         n: int = 1
@@ -107,15 +114,15 @@ class Ci_AutoRun():
                 pag.click(x_down,y_down,clicks=11)
                 pag.press('tab',2)
                 n = 1
-            print(atoms)
-        print("Atoms insert fin.")
+            self.appLogger.info(atoms)
+        self.appLogger.info("Atoms insert fin.")
         time.sleep(0.2)
         pag.press('enter')
         if rightStorage:
             pag.press('tab',4)
             time.sleep(0.2)
             pag.press('enter')
-        print("AutoRun completed.")
+        self.appLogger.info("AutoRun completed.")
 
 
 
