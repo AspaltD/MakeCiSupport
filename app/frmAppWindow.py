@@ -5,6 +5,7 @@ from typing import Dict, List, Optional
 import os
 import copy
 import sys
+import logging
 
 import mdEnums as en
 import mdAutoRun as ar
@@ -618,15 +619,26 @@ class Tab2_LogView(ft.ListView):
         )
         self.update()
 
+class TabLogHandler(logging.Handler):
+    def __init__(self, terminal_view:Tab2_LogView):
+        super().__init__()
+        self.terminalView = terminal_view
+
+    def emit(self, record: logging.LogRecord):
+        msg = self.format(record)
+        self.terminalView.log_write(msg, record.levelname)
+        #return super().emit(record)
+    
+
 class Cn_Tab2_BuilderLog(Cn_TabContainer):
     def __init__(self):
         super().__init__(tabIdx=en.TabIdx.BUILDER_LOG, defVisible=False)
         self.expand = True
-        self.logField = Tab2_LogFIeld()
+        self.logView = Tab2_LogView()
         self.content = ft.Column(
             expand=True,
             controls=[
-                self.logField
+                self.logView
             ],
             scroll=ft.ScrollMode.ALWAYS
         )
@@ -766,6 +778,37 @@ class ExitConfirmDialog(ft.AlertDialog):
         #!ここに終了時のsave動作などを追加
         self.page.window.destroy()
 
+def create_app_logger(
+        name:str, terminal_view:Tab2_LogView, log_file:str="app.log"
+        ) -> logging.Logger:
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG)
+
+    #rootに流さないように
+    logger.propagate = False
+    #再代入できないように
+    if logger.handlers: return logger
+
+    #ログの書式設定
+    formatter = logging.Formatter(
+        '[%(levelname)s] %(message)s'
+    )
+
+    #GUI用のハンドラー
+    view_handler = TabLogHandler(terminal_view)
+    view_handler.setLevel(logging.DEBUG)
+    view_handler.setFormatter(formatter)
+
+    #File用のハンドラー
+    file_handler = logging.FileHandler(log_file, mode='w', encoding="utf-8")
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(formatter)
+
+    logger.addHandler(view_handler)
+    logger.addHandler(file_handler)
+
+    return logger
+
 def main(page: ft.Page):
     page.title = "Make Ci Support App"
     page.window.width = 800
@@ -785,6 +828,7 @@ def main(page: ft.Page):
 
     makeCiSup = MakeCiSupApp()
 
+
     def window_close_event(e):
         if e.data == "close":
             page.open(ExitConfirmDialog())
@@ -797,6 +841,14 @@ def main(page: ft.Page):
     page.window.center()
     page.update()
 
+    logger = create_app_logger(
+        name="myapp",
+        terminal_view=makeCiSup.cn_tab2.logView,
+        log_file="./datatext/myapp.log",
+        )
+    
+    logger.info("Application started")
+
+
 if __name__ == '__main__':
     ft.app(target=main)
-
