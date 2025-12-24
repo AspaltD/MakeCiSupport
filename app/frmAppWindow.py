@@ -5,6 +5,7 @@ from typing import Dict, List, Optional
 import os
 import copy
 import logging
+import time
 
 import mdEnums as en
 import mdAutoRun as ar
@@ -644,7 +645,34 @@ class Cn_Tab2_BuilderLog(Cn_TabContainer):
 class Cn_Tab3_BuilderResult(Cn_TabContainer):
     def __init__(self):
         super().__init__(tabIdx=en.TabIdx.BUILDER_RESULT, defVisible=False)
-        self.content = ft.Placeholder(color=ft.Colors.random())
+        self.txtf_sort = ft.TextField(dense=True, read_only=True, max_lines=3)
+        self.txtf_run = ft.TextField(dense=True, read_only=True, max_lines=3)
+        self.txtf_runtime = ft.TextField(dense=True, read_only=True)
+        self.ins_txtf_sort(OUTPUUUUT_PATH)
+        self.control:List[ft.Control] = [
+            ft.Text("Run_file path"),
+            self.txtf_run,
+            ft.Text("Sort_file path"),
+            self.txtf_sort,
+            ft.Text("Builder run time"),
+            self.txtf_runtime,
+        ]
+        
+        self.content = ft.Column(
+            expand=True,
+            controls=self.control
+        )
+    
+    def ins_txtf_sort(self, sort_path:Path):
+        path = Path(sort_path)
+        if sort_path == OUTPUUUUT_PATH:
+            path = path.resolve()
+        self.txtf_sort.value = str(path)
+    
+    def clear_txtf(self):
+        for cont in self.control:
+            if not isinstance(cont, ft.TextField): continue
+            cont.value = None
 class MakeCiSupApp(ft.Container):
     def __init__(self):
         super().__init__(
