@@ -1,7 +1,7 @@
 import flet as ft
 from pathlib import Path
 import re
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 import os
 import copy
 import logging
@@ -598,7 +598,7 @@ class Tab2_LogView(ft.ListView):
         super().__init__(
             expand=True,
             auto_scroll=True,
-            spacing=2
+            spacing=0
         )
     
     def log_write(self, message:str, level: str):
@@ -631,7 +631,6 @@ class TabLogHandler(logging.Handler):
     def emit(self, record: logging.LogRecord):
         msg = self.format(record)
         self.terminalView.log_write(msg, record.levelname)
-        #return super().emit(record)
     
 
 class Cn_Tab2_BuilderLog(Cn_TabContainer):
@@ -679,10 +678,14 @@ class MakeCiSupApp(ft.Container):
             expand=True,
         )
         self.content = ft.Row(expand=True, controls=[])
+        #左右を分ける一番大きな区分け
         self.left_tabChangeBar = tcb.Left_TabChangeBar(leftBtnClicked=self.left_btn_event)
         self.right_tabBase = ft.Column(expand=3, spacing=2, controls=[])
+        #右側部分の2番目の区分け
         self.cn_tabContents = ft.Stack(expand=10, controls=[])
+        self.btmBtnContents = ft.Row(expand=1, alignment=ft.MainAxisAlignment.END, controls=[])
 
+        #タブたち
         self.cn_tab99 = Cn_Tab99_PlaceHoldeeeer()
         self.cn_tab0 = Cn_Tab0_FilePathSelect()
         self.cn_tab1 = Cn_Tab1_ReadData()
@@ -696,42 +699,43 @@ class MakeCiSupApp(ft.Container):
                 self.cn_tab3,
             ]
         self.right_tabBase.controls.append(self.cn_tabContents)
-        self.btmBtn_Next = bb.BtmBtn_Next()
+        #ボトムボタンたち
+        self.btmBtn_Next = bb.BtmBtn_Next(self.btmBtn_def_event)
         self.btmBtn_Exit = bb.BtmBtn_EXit(self.btmBtn_exit_event)
-        self.btmBtn_Func1 = bb.BtmBtn_Func1()
-        self.btmBtn_Func2 = bb.BtmBtn_Func2()
-        self.btmBtnContents = ft.Row(
-            expand=1,
-            alignment=ft.MainAxisAlignment.END,
-            controls=[
+        self.btmBtn_Func1 = bb.BtmBtn_Func1(self.btmBtn_def_event)
+        self.btmBtn_Func2 = bb.BtmBtn_Func2(self.btmBtn_def_event)
+        self.btmBtnContents.controls =[
                 self.btmBtn_Func2,
                 self.btmBtn_Func1,
                 self.btmBtn_Exit,
-                self.btmBtn_Next
+                self.btmBtn_Next,
             ]
-        )
         self.right_tabBase.controls.append(self.btmBtnContents)
-
+        #本体に配置
         self.content.controls = [
                 self.left_tabChangeBar,
                 self.right_tabBase
             ]
-        self.tab_change(en.TabIdx.FILE_PATH_SELECT)
+        #self.tab_change(en.TabIdx.FILE_PATH_SELECT)
 
+        #pywinautoを宣言してる自動化用クラスを実装
         self.ciAuto = ar.Ci_AutoRun()
 
     def tab_change(self, toTabIdx:en.TabIdx):
+        appLogger.debug(f'tab_change -> {toTabIdx.get_tab_name()}')
         for tab in self.cn_tabContents.controls:
             if not isinstance(tab, Cn_TabContainer): continue
             if tab.tabIdx == toTabIdx: tab.visible = True
             elif tab.tabIdx == 99: pass
             elif tab.tabIdx == 2: pass
             else: tab.visible = False
+        self._btmBtn_func_change(toTabIdx)
         for btn in self.btmBtnContents.controls:
-            btn.change_property(toTabIdx)
-        self.btmBtn_func_change(toTabIdx)
+            if not isinstance(btn, bb.Btm_TabFuncBtn): continue
+            msgs = btn.change_property(toTabIdx)
+            for msg in msgs: appLogger.debug(msg)
 
-    def btmBtn_func_change(self, toTabIdx:en.TabIdx):
+    def _btmBtn_func_change(self, toTabIdx:en.TabIdx):
         match toTabIdx.name:
             case 'FILE_PATH_SELECT':
                 self.btmBtn_Next.on_click = self.btmBtn_tab0_readCIF_event
@@ -743,30 +747,39 @@ class MakeCiSupApp(ft.Container):
             case 'BUILDER_LOG':
                 self.btmBtn_Next.on_click = self.btmBtn_tab2_stop_event
             case _:
-                self.btmBtn_Next.on_click = None
-                self.btmBtn_Func1.on_click = None
-                self.btmBtn_Func2.on_click = None
+                self.btmBtn_Next.on_click = self.btmBtn_def_event
+                self.btmBtn_Func1.on_click = self.btmBtn_def_event
+                self.btmBtn_Func2.on_click = self.btmBtn_def_event
 
-    def left_btn_event(self, e):
+    def left_btn_event(self, e:ft.ControlEvent):
+        if not isinstance(e.control, tcb.Left_TabBtn): raise TypeError("タブ変更用のボタンではありません")
         self.tab_change(e.control.tabIdx)
         self.update()
     
-    def btmBtn_exit_event(self, e):
+    def btmBtn_def_event(self, e:ft.ControlEvent):
+        appLogger.error("This is BtmBtn's default event.")
+        raise ValueError("ボタンに機能が付加されていないにもかかわらずクリックできる状態です")
+
+    def btmBtn_exit_event(self, e:ft.ControlEvent):
         self.page.window.close()
 
-    def btmBtn_tab0_readCIF_event(self, e):
+    def btmBtn_tab0_readCIF_event(self, e:ft.ControlEvent):
         if self.cn_tab0.pickBuilder.check_true_path() is False: return
         if self.cn_tab0.pickCIF.check_true_path() is False: return
+        appLogger.info("Read_CIF started -->")
         if fileData.read_cif_file(self.cn_tab0.pickCIF.get_path()):
             self.tab_change(en.TabIdx.READ_DATA)
             self.cn_tab1.insert_cells()
+        appLogger.info("<-- end")
         self.update()
     def btmBtn_tab0_readTXT_event(self, e):
         if self.cn_tab0.pickBuilder.check_true_path() is False: return
         if self.cn_tab0.pickOutput.check_true_path() is False: return
+        appLogger.info("Read_TXT started -->")
         if fileData.read_output_file(self.cn_tab0.pickOutput.get_path()):
             self.tab_change(en.TabIdx.READ_DATA)
             self.cn_tab1.insert_cells()
+        appLogger.info("<-- end")
         self.update()
     
     def btmBtn_tab1_save_go_event(self,e):
@@ -881,6 +894,8 @@ def main(page: ft.Page):
     
     makeCiSup.cn_tab0.set_txtf_init()
     makeCiSup.ciAuto.set_appLogger(appLogger)
+    makeCiSup.tab_change(en.TabIdx.FILE_PATH_SELECT)
+    page.update()
     
 
 
