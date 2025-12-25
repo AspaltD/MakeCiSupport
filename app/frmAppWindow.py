@@ -428,6 +428,7 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
         #* 格子定数用
             #*個別データ
         self.dataName = Tab1_TxtF_CellData(cell_data_label=en.CellDataLabel.FILE_NAME, label="Data_Name", hint_text="fileName", read_only=False)
+        self.dataName.on_blur = self.rename_event
         self.spaceGItNum = Tab1_TxtF_CellData(cell_data_label=en.CellDataLabel.SPACE_GROUP_IT_NUM, label="SpaceG_IT_Num", hint_text="space_group_IT_number")
         self.spaceGName = Tab1_TxtF_CellData(cell_data_label=en.CellDataLabel.SPACE_GROUP_NAME, label="SpaceG_Name", hint_text="space_group_name_H-M_alt")
         self.cellLenA = Tab1_TxtF_CellData(cell_data_label=en.CellDataLabel.CELL_LENGTH, label="Cell_Length_a", hint_text="cell_length_a")
@@ -538,6 +539,13 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
                 else:
                     pass
 
+    def rename_event(self, e:ft.ControlEvent):
+        if fileData.search_get_value_single(en.CellDataLabel.FILE_NAME) is None: return
+        if e.control.value is None: self.dataName.value = fileData.search_get_value_single(en.CellDataLabel.FILE_NAME)[-1]
+        if not e.control.value.strip(): self.dataName.value = fileData.search_get_value_single(en.CellDataLabel.FILE_NAME)[-1]
+        if fileData.change_file_name(e.control.value) is None: self.dataName.value = fileData.search_get_value_single(en.CellDataLabel.FILE_NAME)[-1]
+        self.update()
+
     #* 行をクリックしたときに削除リストに追加したり消したりするイベント。
     #* 実際に行を消すイベントは本体にある。
     def row_CBox_clicked(self,e:ft.ControlEvent):
@@ -645,12 +653,12 @@ class Cn_Tab3_BuilderResult(Cn_TabContainer):
     def __init__(self):
         super().__init__(tabIdx=en.TabIdx.BUILDER_RESULT, defVisible=False)
         self.txtf_sort = ft.TextField(dense=True, read_only=True, max_lines=3)
-        self.txtf_run = ft.TextField(dense=True, read_only=True, max_lines=3)
+        self.txtf_fileName = ft.TextField(dense=True, read_only=True, max_lines=3)
         self.txtf_runtime = ft.TextField(dense=True, read_only=True)
         self.ins_txtf_sort(OUTPUUUUT_PATH)
         self.control:List[ft.Control] = [
-            ft.Text("Run_file path"),
-            self.txtf_run,
+            ft.Text("Run_file_name"),
+            self.txtf_fileName,
             ft.Text("Sort_file path"),
             self.txtf_sort,
             ft.Text("Builder run time"),
@@ -661,6 +669,14 @@ class Cn_Tab3_BuilderResult(Cn_TabContainer):
             expand=True,
             controls=self.control
         )
+
+    def ins_txtf_fileName(self):
+        fileName = fileData.search_get_value_single(en.CellDataLabel.FILE_NAME)
+        if fileName is None:
+            self.txtf_fileName.value = None
+            return
+        self.txtf_fileName.value = fileName[-1]
+
     
     def ins_txtf_sort(self, sort_path:Path):
         path = Path(sort_path)
@@ -790,6 +806,7 @@ class MakeCiSupApp(ft.Container):
         self.update()
         self.ciAuto.auto_atom_info_insert(self.cn_tab0.pickBuilder.get_path(), fileData)
         self.page.window.to_front()
+        self.cn_tab3.ins_txtf_fileName()
         self.tab_change(en.TabIdx.BUILDER_RESULT)
         self.update()
     def btmBtn_tab1_save_event(self, e):
