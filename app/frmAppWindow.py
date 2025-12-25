@@ -120,10 +120,7 @@ class GjfData(List[str]):
                             complete = False
                             break
                     case _:
-                        if i >= 200:
-                            appLogger.error("readline is over.(200 line)")
-                            complete = False
-                            break
+                        if i >= 6: break
                 self.append(line)
         self.print_self()
         return complete
@@ -138,12 +135,37 @@ class GjfData(List[str]):
         self.append("\n")
         self.append("0 1")
         self.print_self()
-        self.write_gjf(self.defGjfPath)
+        self.save_gjf(self.defGjfPath)
 
-    def write_gjf(self, gjf_path:Path):
+    def save_gjf(self, gjf_path:Path):
+        is_def = False
+        if gjf_path == self.defGjfPath: is_def = True
+        i = -1
         with open(gjf_path, mode="w") as f:
             for line in self:
+                i += 1
                 f.write(line.strip() + '\n')
+                if is_def and i >= 5: break
+    
+    def read_mi(self, mi_path:Path):
+        i = -1
+        with open(mi_path) as f:
+            for lineS in f:
+                i += 1
+                if not lineS.strip(): continue
+                line = lineS.rstrip()
+                if i >= 450:
+                    appLogger.error("readline is over.(400 lines)")
+                    break
+                lineP = line.split()
+                if lineP[0] != "POS": continue
+                lineP[1] = lineP[1].split(sep='-')[0]
+                if len(lineP[1]) < 2: lineP[1] += "_"
+                for p in range(2, 5):
+                    while len(lineP[p]) < 10: lineP[p] = "_" + lineP[p]
+                outline = '  '.join(lineP[1:])
+                self.append(outline.replace('_', ' '))
+        self.print_self()
 
 
 
@@ -751,6 +773,7 @@ class Cn_Tab4_MIPathSelect(Cn_TabContainer):
 
         def path_change(self, changedStr:Optional[str]):
             super().path_change(changedStr)
+            gjfData.read_gjf(self.get_path())
             self.tab4.ins_gjf_view()
 
     def __init__(self):
@@ -792,6 +815,7 @@ class Cn_Tab4_MIPathSelect(Cn_TabContainer):
         self.update()
 
     def ins_gjf_view(self):
+        self.viewDefGJF.controls.clear()
         for line in gjfData:
             self.viewDefGJF.controls.append(
                 ft.TextField(
@@ -801,11 +825,44 @@ class Cn_Tab4_MIPathSelect(Cn_TabContainer):
                     border=ft.InputBorder.NONE
                     )
             )
+        self.update()
 
 class Cn_Tab5_GJFPreview(Cn_TabContainer):
     def __init__(self):
         super().__init__(en.TabIdx.MI_PREVIEW, False)
+        self.bgcolor = ft.Colors.LIGHT_BLUE_50
+        self.viewGjf = ft.ListView(
+            expand=True,
+            auto_scroll=True,
+            spacing=0,
+            controls=[]
+        )
+        self.content = self.viewGjf
 
+        self.savePicker_gjf = filePickers[en.FilePickerIdx.GJF_SAVE]
+        self.savePicker_gjf.on_result = self.pick_files_result
+    
+    def ins_view_gjf(self):
+        self.viewGjf.controls.clear()
+        for line in gjfData:
+            self.viewGjf.controls.append(
+                ft.TextField(
+                    value=f'{line}',
+                    read_only=True,
+                    dense=True,
+                    border=ft.InputBorder.NONE
+                    )
+            )
+
+    def pick_files_result(self, e:ft.FilePickerResultEvent):
+        if e.path:
+            if re.match('.*gjf',e.path):
+                gjfPath = Path(e.path)
+            else:
+                gjfPath = Path(e.path+".gjf")
+            appLogger.info(gjfPath)
+            gjfData.save_gjf(gjfPath)
+        self.update()
 
 class MakeCiSupApp(ft.Container):
     def __init__(self):
@@ -885,6 +942,10 @@ class MakeCiSupApp(ft.Container):
                 self.btmBtn_Func2.on_click = self.cn_tab1.dataTable_row_clear_event
             case 'BUILDER_LOG':
                 self.btmBtn_Next.on_click = self.btmBtn_tab2_stop_event
+            case 'MI_PATH_SELECT':
+                self.btmBtn_Next.on_click = self.btmBtn_tab4_preview_event
+            case 'MI_PREVIEW':
+                self.btmBtn_Func1.on_click = self.btmBtn_tab5_saveGJF_event
             case _:
                 self.btmBtn_Next.on_click = self.btmBtn_def_event
                 self.btmBtn_Func1.on_click = self.btmBtn_def_event
@@ -941,6 +1002,20 @@ class MakeCiSupApp(ft.Container):
     def btmBtn_tab2_stop_event(self, e):
         self.ciAuto.stopRun = True
         self.update()
+
+    def btmBtn_tab4_preview_event(self, e:ft.ControlEvent):
+        if not self.cn_tab4.pickMI.check_true_path(): return
+        gjfData.read_mi(self.cn_tab4.pickMI.get_path())
+        self.cn_tab5.ins_view_gjf()
+        self.tab_change(en.TabIdx.MI_PREVIEW)
+        self.update()
+    
+    def btmBtn_tab5_saveGJF_event(self, e:ft.ControlEvent):
+        if len(self.cn_tab5.viewGjf.controls) < 5: return
+        self.cn_tab5.savePicker_gjf.save_file(
+            allowed_extensions=['gjf'],
+            file_name=self.cn_tab4.pickMI.get_path().stem,
+            )
 
 class ExitConfirmDialog(ft.AlertDialog):
     def __init__(self):
