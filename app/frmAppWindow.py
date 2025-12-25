@@ -15,6 +15,7 @@ import mdBottomButtons as bb
 filePickers: Dict[en.FilePickerIdx, ft.FilePicker] = {}
 fileData:FileData
 settingData:SettingData
+gjfData:GjfData
 appLogger:logging.Logger
 OUTPUUUUT_PATH:Path = Path('./datatext/outpuuuut.txt')
 
@@ -92,6 +93,59 @@ class SettingData(Dict[en.SettingLabel, str]):
                 outputLine = line.value + ";" + self[line] + '\n'
                 f.write(outputLine)
 
+class GjfData(List[str]):
+    def __init__(self, def_gjf_path:Optional[Path]=None):
+        self.defGjfPath = Path("./datatext/default.gjf")
+        if not def_gjf_path is None:
+            if self.read_gjf(def_gjf_path): return
+        if self.defGjfPath.is_file(): self.read_gjf(self.defGjfPath)
+        else: self.make_def_gjf()
+
+    def print_self(self):
+        for line in self:
+            appLogger.info(line)
+
+    def read_gjf(self, gjf_path:Path) -> bool:
+        self.clear()
+        appLogger.info("read_gjf")
+        complete = True
+        i = -1
+        with open(gjf_path) as f:
+            for lineS in f:
+                i += 1
+                line = lineS.rstrip()
+                match i:
+                    case 0:
+                        if not re.match('%chk=.*', line):
+                            complete = False
+                            break
+                    case _:
+                        if i >= 200:
+                            appLogger.error("readline is over.(200 line)")
+                            complete = False
+                            break
+                        self.append(line)
+        self.print_self()
+        return complete
+
+    def make_def_gjf(self):
+        self.clear()
+        appLogger.info("make_def_gjf")
+        self.append("%chk=C:/Users/Owner/Desktop/Data/Yoshida/def/default.chk")
+        self.append("# wb97xd/lanl2dz pop=full geom=connectivity")
+        self.append("\n")
+        self.append("Title Card Required")
+        self.append("\n")
+        self.append("0 1")
+        self.print_self()
+        self.write_gjf(self.defGjfPath)
+
+    def write_gjf(self, gjf_path:Path):
+        with open(gjf_path, mode="w") as f:
+            for line in self:
+                f.write(line.strip() + '\n')
+
+
 
 class FileData_Value(List[str]):
     def __init__(self, data_label:en.CellDataLabel, *value:str):
@@ -164,7 +218,7 @@ class FileData(List[FileData_Value]):
                 i += 1
                 line = lineS.strip()
                 if i >= 450:
-                    appLogger.info("readline is over.(400 lines)")
+                    appLogger.error("readline is over.(400 lines)")
                     return False
                 if i == 0:
                     if not cifPath.stem.lower() in line:
@@ -710,6 +764,8 @@ class Cn_Tab4_MIPathSelect(Cn_TabContainer):
         for cont in self.control:
             if not isinstance(cont, Tab_FilePicker_Bar): continue
             cont.set_init()
+            if settingData[en.SettingLabel.DEF_GJF_PATH] == "None":
+                self.pickGJF.path_change(str(gjfData.defGjfPath.resolve()))
         self.update()
 
 class Cn_Tab5_GJFPreview(Cn_TabContainer):
@@ -941,6 +997,11 @@ def main(page: ft.Page):
     settingData = SettingData()
     global fileData
     fileData = FileData()
+    global gjfData
+    if settingData[en.SettingLabel.DEF_GJF_PATH] == "None":
+        gjfData = GjfData()
+    else:
+        gjfData = GjfData(Path(settingData[en.SettingLabel.DEF_GJF_PATH]))
     
     makeCiSup.cn_tab0.set_txtf_init()
     makeCiSup.cn_tab4.set_txtf_init()

@@ -47,6 +47,9 @@ class BtmBtn_Next(Btm_TabFuncBtn):
             case 'BUILDER_LOG':
                 self.text = "Stop"
                 self.disabled = False
+            case 'MI_PATH_SELECT':
+                self.text = "Preview"
+                self.disabled = False
             case _:
                 self.text = "Next"
                 self.disabled = True
@@ -64,6 +67,9 @@ class BtmBtn_Func1(Btm_TabFuncBtn):
                 self.text = "ReadTXT"
                 self.visible = True
             case 'READ_DATA':
+                self.text = "Save"
+                self.visible = True
+            case 'MI_PREVIEW':
                 self.text = "Save"
                 self.visible = True
             case _:
