@@ -124,7 +124,7 @@ class GjfData(List[str]):
                             appLogger.error("readline is over.(200 line)")
                             complete = False
                             break
-                        self.append(line)
+                self.append(line)
         self.print_self()
         return complete
 
@@ -744,18 +744,41 @@ class Cn_Tab3_BuilderResult(Cn_TabContainer):
             cont.value = None
 
 class Cn_Tab4_MIPathSelect(Cn_TabContainer):
+    class PickGJF(Tab_FilePicker_Bar):
+        def __init__(self, tab4:Cn_Tab4_MIPathSelect):
+            super().__init__(en.FilePickerIdx.GJF_PICK)
+            self.tab4 = tab4
+
+        def path_change(self, changedStr:Optional[str]):
+            super().path_change(changedStr)
+            self.tab4.ins_gjf_view()
+
     def __init__(self):
         super().__init__(en.TabIdx.MI_PATH_SELECT, False)
         self.pickMI = Tab_FilePicker_Bar(en.FilePickerIdx.MI_PICK)
-        self.pickGJF = Tab_FilePicker_Bar(en.FilePickerIdx.GJF_PICK)
-        self.viewDefGJF = ft.ListView()
+        self.pickGJF = self.PickGJF(self)
+        self.viewDefGJF = ft.ListView(
+            expand=True,
+            auto_scroll=True,
+            spacing=0,
+            controls=[],
+        )
+        self.cont_viewBase = ft.Container(
+            content=self.viewDefGJF,
+            expand=True,
+            bgcolor=ft.Colors.LIGHT_BLUE_50,
+            padding=10,
+            border=ft.border.all(1, ft.Colors.BLACK),
+        )
+        
+
 
         self.control:List[ft.Control] = [
             ft.Text("MI Path"),
             self.pickMI,
             ft.Text("Default GJF Path"),
             self.pickGJF,
-            self.viewDefGJF,
+            self.cont_viewBase,
         ]
 
         self.content = ft.Column(expand=True, controls=self.control)
@@ -767,6 +790,17 @@ class Cn_Tab4_MIPathSelect(Cn_TabContainer):
             if settingData[en.SettingLabel.DEF_GJF_PATH] == "None":
                 self.pickGJF.path_change(str(gjfData.defGjfPath.resolve()))
         self.update()
+
+    def ins_gjf_view(self):
+        for line in gjfData:
+            self.viewDefGJF.controls.append(
+                ft.TextField(
+                    value=f'{line}',
+                    read_only=True,
+                    dense=True,
+                    border=ft.InputBorder.NONE
+                    )
+            )
 
 class Cn_Tab5_GJFPreview(Cn_TabContainer):
     def __init__(self):
