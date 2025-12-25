@@ -8,6 +8,8 @@ class SettingLabel(Enum):
     BUILDER_PATH = "builder_path"
     CIF_PATH = "cif_path"
     TXT_PATH = "txt_path"
+    MI_PATH = "mi_path"
+    DEF_GJF_PATH = "def_gjf_path"
 
 
 class CellDataLabel(IntEnum):
@@ -52,6 +54,8 @@ class TabIdx(IntEnum):
     READ_DATA = 1
     BUILDER_LOG = 2
     BUILDER_RESULT = 3
+    MI_PATH_SELECT = 4
+    MI_PREVIEW = 5
     PLACE_HOLDER = 99
 
     def get_tab_name(self) -> str:
@@ -60,6 +64,8 @@ class TabIdx(IntEnum):
             case 'READ_DATA': return "読取結果"
             case 'BUILDER_LOG': return "Builderログ"
             case 'BUILDER_RESULT': return "Builder動作完了"
+            case 'MI_PATH_SELECT': return "GJF作成設定"
+            case 'MI_PREVIEW': return "GJFプレビュー"
             case 'PLACE_HOLDER': return "**このタブは非表示タブです。**"
 
 
@@ -81,21 +87,25 @@ class FilePickerIdx(Enum):
     CIF_PICK = "CIF File Path"
     OUTPUT_PICK = "Text File Path"
     OUTPUT_SAVE = "Output File Path"
+    MI_PICK = "MI File Path"
+    GJF_PICK = "Def GJF File Path"
+    GJF_SAVE = "GJF Output Path"
 
     def get_fileType(self)->str:
         match self.name:
-            case 'BUILDER_PICK':
-                return "exe"
-            case 'CIF_PICK':
-                return "cif"
-            case 'OUTPUT_PICK':
-                return "txt"
-            case 'OUTPUT_SAVE':
-                return "txt"
+            case 'BUILDER_PICK': return "exe"
+            case 'CIF_PICK': return "cif"
+            case 'OUTPUT_PICK': return "txt"
+            case 'OUTPUT_SAVE': return "txt"
+            case 'MI_PICK': return "mi"
+            case 'GJF_PICK': return "gjf"
+            case 'GJF_SAVE': return "gjf"
 
     def get_setting_label(self) -> Optional[SettingLabel]:
         match self.name:
             case 'BUILDER_PICK': return SettingLabel.BUILDER_PATH
             case 'CIF_PICK': return SettingLabel.CIF_PATH
             case 'OUTPUT_PICK': return SettingLabel.TXT_PATH
+            case 'MI_PICK': return SettingLabel.MI_PATH
+            case 'GJF_PICK': return SettingLabel.DEF_GJF_PATH
             case _: return None

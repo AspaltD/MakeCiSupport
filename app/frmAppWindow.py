@@ -23,8 +23,8 @@ class SettingData(Dict[en.SettingLabel, str]):
     def __init__(self):
         self.settingPath = Path('./datatext/makeci_setting.txt')
         self.appVerType = "beta"
-        self.appVerNum = "2.0"
-        self._allowVerNum = 2.0
+        self.appVerNum = "4.0"
+        self._allowVerNum = 4.0
 
         for label in en.SettingLabel:
             self[label] = "None"
@@ -688,6 +688,35 @@ class Cn_Tab3_BuilderResult(Cn_TabContainer):
         for cont in self.control:
             if not isinstance(cont, ft.TextField): continue
             cont.value = None
+
+class Cn_Tab4_MIPathSelect(Cn_TabContainer):
+    def __init__(self):
+        super().__init__(en.TabIdx.MI_PATH_SELECT, False)
+        self.pickMI = Tab_FilePicker_Bar(en.FilePickerIdx.MI_PICK)
+        self.pickGJF = Tab_FilePicker_Bar(en.FilePickerIdx.GJF_PICK)
+        self.viewDefGJF = ft.ListView()
+
+        self.control:List[ft.Control] = [
+            ft.Text("MI Path"),
+            self.pickMI,
+            ft.Text("Default GJF Path"),
+            self.pickGJF,
+            self.viewDefGJF,
+        ]
+
+        self.content = ft.Column(expand=True, controls=self.control)
+
+    def set_txtf_init(self):
+        for cont in self.control:
+            if not isinstance(cont, Tab_FilePicker_Bar): continue
+            cont.set_init()
+        self.update()
+
+class Cn_Tab5_GJFPreview(Cn_TabContainer):
+    def __init__(self):
+        super().__init__(en.TabIdx.MI_PREVIEW, False)
+
+
 class MakeCiSupApp(ft.Container):
     def __init__(self):
         super().__init__(
@@ -707,12 +736,16 @@ class MakeCiSupApp(ft.Container):
         self.cn_tab1 = Cn_Tab1_ReadData()
         self.cn_tab2 = Cn_Tab2_BuilderLog()
         self.cn_tab3 = Cn_Tab3_BuilderResult()
+        self.cn_tab4 = Cn_Tab4_MIPathSelect()
+        self.cn_tab5 = Cn_Tab5_GJFPreview()
         self.cn_tabContents.controls = [
                 self.cn_tab99,
                 self.cn_tab2,
                 self.cn_tab0,
                 self.cn_tab1,
                 self.cn_tab3,
+                self.cn_tab4,
+                self.cn_tab5,
             ]
         self.right_tabBase.controls.append(self.cn_tabContents)
         #ボトムボタンたち
@@ -910,6 +943,7 @@ def main(page: ft.Page):
     fileData = FileData()
     
     makeCiSup.cn_tab0.set_txtf_init()
+    makeCiSup.cn_tab4.set_txtf_init()
     makeCiSup.ciAuto.set_appLogger(appLogger)
     makeCiSup.tab_change(en.TabIdx.FILE_PATH_SELECT)
     page.update()
