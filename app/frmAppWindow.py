@@ -812,7 +812,7 @@ class MakeCiSupApp(ft.Container):
     def btmBtn_tab1_save_event(self, e):
         if not re.match('FileData_.*', fileData[0][0]): return
         self.cn_tab1.commit_fileData()
-        self.cn_tab1.saveFilePicker.save_file(allowed_extensions=['txt'])
+        self.cn_tab1.saveFilePicker.save_file(allowed_extensions=['txt'], file_name=fileData.search_get_value_single(en.CellDataLabel.FILE_NAME)[-1])
         self.update()
     
     def btmBtn_tab2_stop_event(self, e):
