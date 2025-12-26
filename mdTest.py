@@ -296,6 +296,7 @@ def re_test():
     
 def path_test():
         print(Path("a").name == "a")
+        print(Path("None").resolve())
 
 
 if __name__ == '__main__':
