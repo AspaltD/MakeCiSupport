@@ -8,3 +8,5 @@ app/__pycache__/*
 datatext/*
 dist/*
 build/*
+build.spec
+.vscode
