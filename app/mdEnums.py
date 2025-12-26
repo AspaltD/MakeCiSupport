@@ -70,10 +70,10 @@ class TabIdx(IntEnum):
 
 
 class BtmBtnIdx(IntEnum):
-    NEXT_TAB = 0
-    EXIT_APP = 1
-    OTHER_FUNC1 = 2
     OTHER_FUNC2 = 3
+    OTHER_FUNC1 = 2
+    EXIT_APP = 1
+    NEXT_TAB = 0
 
     def get_btn_def_text(self) -> str:
         match self.name:

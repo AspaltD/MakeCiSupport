@@ -1,6 +1,19 @@
 import flet as ft
 import mdEnums as en
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Union, Optional
+
+class Dict_BtmBtnProperties():
+    def __init__(self,
+                btm_btn_idx:en.BtmBtnIdx,
+                visible:bool,
+                disabled:bool,
+                text:str,
+                on_click:ft.ControlEvent):
+        self.BTMBTNIDX = btm_btn_idx
+        self.VISIBLE = visible
+        self.DISABLED = disabled
+        self.TEXT = text
+        self.ON_CLICK = on_click
 
 class Btm_TabFuncBtn(ft.FilledButton):
     def __init__(self, work_place_idx:en.BtmBtnIdx, def_click_event:ft.ControlEvent):
@@ -14,6 +27,29 @@ class Btm_TabFuncBtn(ft.FilledButton):
     def change_property(self, toTabIdx:en.TabIdx) -> Tuple[str, ...]:
         self.disabled = True
         return ("self_disabled -> True",)
+    
+class If_BottomFuncBtn(ft.FilledButton):
+    def __init__(self, btm_btn_idx:en.BtmBtnIdx):
+        super().__init__(
+            width=120,
+        )
+        self.btmBtnIdx = btm_btn_idx
+        self.text = self.btmBtnIdx.get_btn_def_text()
+
+    def change_property(self, dict_properties:Dict_BtmBtnProperties) -> Tuple[str, ...]:
+        prop = dict_properties
+        self.visible = prop.VISIBLE
+        self.disabled = prop.DISABLED
+        self.text = prop.TEXT
+        self.on_click = prop.ON_CLICK
+        return (
+            f'BtmBtn_{self.btmBtnIdx.get_btn_def_text()}_properties -->'
+            f'  visible  -> {self.visible}',
+            f'  disabled -> {self.disabled}',
+            f'  text     -> {self.text}',
+            f'  on_click -> {self.on_click.__qualname__}',
+            "<--",
+        )
 
 class BtmBtn_EXit(Btm_TabFuncBtn):
     def __init__(self, exit_event:ft.ControlEvent):
@@ -103,15 +139,21 @@ class Btm_BtnBar(ft.Row):
         super().__init__(
             expand=1,
             alignment=ft.MainAxisAlignment.END,
-            controls=self._add_btn_def()
+            controls=self._add_btn()
         )
 
-    def _add_btn_def(self) -> List[Btm_TabFuncBtn]:
-        controls:List[Btm_TabFuncBtn] = [
-            BtmBtn_Next(),
-            BtmBtn_EXit(),
-            BtmBtn_Func1(),
-            BtmBtn_Func2()
-        ]
+    def _add_btn(self) -> List[If_BottomFuncBtn]:
+        controls:List[If_BottomFuncBtn] = []
+        for btnIdx in en.BtmBtnIdx:
+            controls.append(If_BottomFuncBtn(btnIdx))
         return controls
+    
+    def change_btn_properties(self, *dict_properties:Dict_BtmBtnProperties):
+        for prop in dict_properties:
+            for btn in self.controls:
+                if not isinstance(btn, If_BottomFuncBtn): continue
+                if btn.btmBtnIdx == prop.BTMBTNIDX:
+                    log = btn.change_property(prop)
+                    break
+
 

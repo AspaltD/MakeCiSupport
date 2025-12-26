@@ -864,6 +864,28 @@ class Cn_Tab5_GJFPreview(Cn_TabContainer):
             gjfData.save_gjf(gjfPath)
         self.update()
 
+class Btm_BtnBar(ft.Row):
+    def __init__(self):
+        super().__init__(
+            expand=1,
+            alignment=ft.MainAxisAlignment.END,
+            controls=self._add_btn()
+        )
+
+    def _add_btn(self) -> List[bb.If_BottomFuncBtn]:
+        controls:List[bb.If_BottomFuncBtn] = []
+        for btnIdx in en.BtmBtnIdx:
+            controls.append(bb.If_BottomFuncBtn(btnIdx))
+        return controls
+    
+    def change_btn_properties(self, *dict_properties:bb.Dict_BtmBtnProperties):
+        for prop in dict_properties:
+            for btn in self.controls:
+                if not isinstance(btn, bb.If_BottomFuncBtn): continue
+                if btn.btmBtnIdx == prop.BTMBTNIDX:
+                    msgs = btn.change_property(prop)
+                    for msg in msgs: appLogger.debug(msg)
+                    break
 class MakeCiSupApp(ft.Container):
     def __init__(self):
         super().__init__(
