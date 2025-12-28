@@ -11,7 +11,7 @@ import mdEnums as en
 import mdAutoRun as ar
 import mdTabChangeBar as tcb
 import mdBottomButtons as bb
-import mdInterfaces as i
+import mdInterfaces as itf
 
 filePickers: Dict[en.FilePickerIdx, ft.FilePicker] = {}
 fileData:FileData
@@ -167,8 +167,6 @@ class GjfData(List[str]):
                 outline = '  '.join(lineP[1:])
                 self.append(outline.replace('_', ' '))
         self.print_self()
-
-
 
 class FileData_Value(List[str]):
     def __init__(self, data_label:en.CellDataLabel, *value:str):
@@ -366,21 +364,80 @@ class FileData(List[FileData_Value]):
                 return lastName
         return None
 
+class Tab99_PlaceHoldeeeer(itf.If_TabContainer):
+    def __init__(self):
+        super().__init__(en.TabIdx.PLACE_HOLDER, True)
+        self.content = ft.Placeholder(color=ft.Colors.random())
+
+class Tab0_BuilderPathSelect(itf.If_TabContainer):
+    def __init__(self):
+        super().__init__(en.TabIdx.FILE_PATH_SELECT, True)
+        self.pickBuilder = itf.If_FilePickerBar(en.FilePickerIdx.BUILDER_PICK)
+        self.pickCIF = itf.If_FilePickerBar(en.FilePickerIdx.CIF_PICK)
+        self.pickTXT = itf.If_FilePickerBar(en.FilePickerIdx.OUTPUT_PICK)
+
+        self.controls = [
+            ft.Text("Builder Path"),
+            self.pickBuilder,
+            ft.Text("CIF File Path"),
+            self.pickCIF,
+            ft.Text("Text File Path"),
+            self.pickTXT,
+        ]
+        self.content = ft.Column(controls=self.controls)
+
+    def set_init(self, parent:MainAppFrame):
+        super().set_init(parent)
+        for cont in self.controls:
+            if not isinstance(cont, itf.If_FilePickerBar): continue
+            msgs = cont.set_init(filePickers[cont.pickIdx], settingData)
+            for msg in msgs: self._parent.appLogger.debug(msg)
+
+    def _set_btmBtn_prop(self) -> itf.Data_BtmBtnPropsDict:
+        props = super()._set_btmBtn_prop()
+        props[en.BtmBtnIdx.NEXT_TAB] = itf.Data_BtmBtnProperties(
+            btm_btn_idx=en.BtmBtnIdx.NEXT_TAB,
+            visible=True,
+            disabled=False,
+            text="ReadCIF",
+            on_click=self._parent.btmBtn_tab0_next_event
+        )
+        props[en.BtmBtnIdx.OTHER_FUNC1] = itf.Data_BtmBtnProperties(
+            btm_btn_idx=en.BtmBtnIdx.OTHER_FUNC1,
+            visible=True,
+            disabled=False,
+            text="ReadTXT",
+            on_click=self._parent.btmBtn_tab0_func1_event
+        )
+        return props
+
+    def readCIF_event(self):
+        if not self.pickBuilder.check_txtf_path():
+            self._parent.appLogger.warning("selected file is not match suffix (.exe)")
+            raise ValueError("選択されたファイルと指定の拡張子が合いません")
+        if not self.pickCIF.check_txtf_path():
+            self._parent.appLogger.warning("selected file is not match suffix (.cif)")
+            raise ValueError("選択されたファイルと指定の拡張子が合いません")
+        self._parent.appLogger.info("Read_CIF started -->")
+        fileData.read_cif_file(self.pickCIF.get_path())
+        self._parent.appLogger.info("<-- end")
+        self.update()
+
+    def readTXT_event(self):
+        if not self.pickBuilder.check_txtf_path():
+            self._parent.appLogger.warning("selected file is not match suffix (.exe)")
+            raise ValueError("選択されたファイルと指定の拡張子が合いません")
+        if not self.pickTXT.check_txtf_path():
+            self._parent.appLogger.warning("selected file is not match suffix (.cif)")
+            raise ValueError("選択されたファイルと指定の拡張子が合いません")
+        self._parent.appLogger.info("Read_TXT started -->")
+        fileData.read_output_file(self.pickTXT.get_path())
+        self._parent.appLogger.info("<-- end")
+        self.update()
 
 
 
-class TabLogHandler(logging.Handler):
-    def __init__(self, terminal_view:Tab2_LogView):
-        super().__init__()
-        self.terminalView = terminal_view
-
-    def emit(self, record: logging.LogRecord):
-        msg = self.format(record)
-        self.terminalView.log_write(msg, record.levelname)
-    
-
-
-class MakeCiSupApp(ft.Container):
+class MainAppFrame(ft.Container):
     def __init__(self):
         super().__init__(
             expand=True,
@@ -394,13 +451,13 @@ class MakeCiSupApp(ft.Container):
         self.btmBtnContents = ft.Row(expand=1, alignment=ft.MainAxisAlignment.END, controls=[])
 
         #タブたち
-        self.cn_tab99 = Cn_Tab99_PlaceHoldeeeer()
-        self.cn_tab0 = Cn_Tab0_FilePathSelect()
-        self.cn_tab1 = Cn_Tab1_ReadData()
-        self.cn_tab2 = Cn_Tab2_BuilderLog()
-        self.cn_tab3 = Cn_Tab3_BuilderResult()
-        self.cn_tab4 = Cn_Tab4_MIPathSelect()
-        self.cn_tab5 = Cn_Tab5_GJFPreview()
+        self.cn_tab99 = Tab99_PlaceHoldeeeer()
+        self.cn_tab0 = Tab0_BuilderPathSelect()
+#       self.cn_tab1 = Cn_Tab1_ReadData()
+#        self.cn_tab2 = Cn_Tab2_BuilderLog()
+#        self.cn_tab3 = Cn_Tab3_BuilderResult()
+#        self.cn_tab4 = Cn_Tab4_MIPathSelect()
+#        self.cn_tab5 = Cn_Tab5_GJFPreview()
         self.cn_tabContents.controls = [
                 self.cn_tab99,
                 self.cn_tab2,
@@ -433,69 +490,34 @@ class MakeCiSupApp(ft.Container):
         #pywinautoを宣言してる自動化用クラスを実装
         self.ciAuto = ar.Ci_AutoRun()
 
-    def tab_change(self, toTabIdx:en.TabIdx):
-        appLogger.debug(f'tab_change -> {toTabIdx.get_tab_name()}')
-        for tab in self.cn_tabContents.controls:
-            if not isinstance(tab, Cn_TabContainer): continue
-            if tab.tabIdx == toTabIdx: tab.visible = True
-            elif tab.tabIdx == 99: pass
-            elif tab.tabIdx == 2: pass
-            else: tab.visible = False
-        self._btmBtn_func_change(toTabIdx)
-        for btn in self.btmBtnContents.controls:
-            if not isinstance(btn, bb.Btm_TabFuncBtn): continue
-            msgs = btn.change_property(toTabIdx)
-            for msg in msgs: appLogger.debug(msg)
+        self.appLogger:logging.Logger
 
-    def _btmBtn_func_change(self, toTabIdx:en.TabIdx):
-        match toTabIdx.name:
-            case 'FILE_PATH_SELECT':
-                self.btmBtn_Next.on_click = self.btmBtn_tab0_readCIF_event
-                self.btmBtn_Func1.on_click = self.btmBtn_tab0_readTXT_event
-            case 'READ_DATA':
-                self.btmBtn_Next.on_click = self.btmBtn_tab1_save_go_event
-                self.btmBtn_Func1.on_click = self.btmBtn_tab1_save_event
-                self.btmBtn_Func2.on_click = self.cn_tab1.dataTable_row_clear_event
-            case 'BUILDER_LOG':
-                self.btmBtn_Next.on_click = self.btmBtn_tab2_stop_event
-            case 'MI_PATH_SELECT':
-                self.btmBtn_Next.on_click = self.btmBtn_tab4_preview_event
-            case 'MI_PREVIEW':
-                self.btmBtn_Func1.on_click = self.btmBtn_tab5_saveGJF_event
-            case _:
-                self.btmBtn_Next.on_click = self.btmBtn_def_event
-                self.btmBtn_Func1.on_click = self.btmBtn_def_event
-                self.btmBtn_Func2.on_click = self.btmBtn_def_event
+    def tab_change(self, toTabIdx:en.TabIdx):
+        self.appLogger.debug(f'tab_change -> {toTabIdx.get_tab_name()}')
+        propsDict:itf.Data_BtmBtnPropsDict
+        for tab in self.cn_tabContents.controls:
+            if not isinstance(tab, itf.If_TabContainer): continue
+            if tab.change_self_visible(toTabIdx): propsDict = tab.get_dict_props()
+            #else: propsDict = 
+        for btn in self.btmBtnContents.controls:
+            if not isinstance(btn, itf.If_BottomFuncBtn): continue
+            msgs = btn.change_property(propsDict[btn.btmBtnIdx])
+            for msg in msgs: appLogger.debug(msg)
 
     def left_btn_event(self, e:ft.ControlEvent):
         if not isinstance(e.control, tcb.Left_TabBtn): raise TypeError("タブ変更用のボタンではありません")
         self.tab_change(e.control.tabIdx)
         self.update()
     
-    def btmBtn_def_event(self, e:ft.ControlEvent):
-        appLogger.error("This is BtmBtn's default event.")
-        raise ValueError("ボタンに機能が付加されていないにもかかわらずクリックできる状態です")
-
-    def btmBtn_exit_event(self, e:ft.ControlEvent):
-        self.page.window.close()
-
-    def btmBtn_tab0_readCIF_event(self, e:ft.ControlEvent):
-        if self.cn_tab0.pickBuilder.check_true_path() is False: return
-        if self.cn_tab0.pickCIF.check_true_path() is False: return
-        appLogger.info("Read_CIF started -->")
-        if fileData.read_cif_file(self.cn_tab0.pickCIF.get_path()):
-            self.tab_change(en.TabIdx.READ_DATA)
-            self.cn_tab1.insert_cells()
-        appLogger.info("<-- end")
+    def btmBtn_tab0_next_event(self, e:ft.ControlEvent):
+        self.cn_tab0.readCIF_event()
+        self.tab_change(en.TabIdx.READ_DATA)
+        #!self.cn_tab1.insert_cells()
         self.update()
-    def btmBtn_tab0_readTXT_event(self, e):
-        if self.cn_tab0.pickBuilder.check_true_path() is False: return
-        if self.cn_tab0.pickOutput.check_true_path() is False: return
-        appLogger.info("Read_TXT started -->")
-        if fileData.read_output_file(self.cn_tab0.pickOutput.get_path()):
-            self.tab_change(en.TabIdx.READ_DATA)
-            self.cn_tab1.insert_cells()
-        appLogger.info("<-- end")
+    def btmBtn_tab0_func1_event(self, e:ft.ControlEvent):
+        self.cn_tab0.readTXT_event()
+        self.tab_change(en.TabIdx.READ_DATA)
+        #!
         self.update()
     
     def btmBtn_tab1_save_go_event(self,e):
@@ -552,7 +574,7 @@ class ExitConfirmDialog(ft.AlertDialog):
         self.page.window.destroy()
 
 def create_app_logger(
-        name:str, terminal_view:Tab2_LogView, log_file:str="app.log"
+        name:str, terminal_view:itf.If_LogView, log_file:str="app.log"
         ) -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
@@ -568,7 +590,7 @@ def create_app_logger(
     )
 
     #GUI用のハンドラー
-    view_handler = TabLogHandler(terminal_view)
+    view_handler = itf.If_ViewLogHandler(terminal_view)
     view_handler.setLevel(logging.DEBUG)
     view_handler.setFormatter(formatter)
 

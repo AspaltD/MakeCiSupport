@@ -700,7 +700,7 @@ class Tab2_LogView(ft.ListView):
         self.controls.append(
             ft.Text(
                 value=message.rstrip(),
-                font_family='monospace',
+                font_family='Consolas',
                 size=13,
                 color=color_map.get(level, ft.Colors.BLUE_50),
             )
