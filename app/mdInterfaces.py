@@ -5,7 +5,6 @@ import os
 from logging import LogRecord, Logger, Handler
 
 import mdEnums as en
-import frmApp as frm
 
 class Data_BtmBtnProperties():
     def __init__(self,
@@ -67,14 +66,12 @@ class If_FilePickerBar(ft.Row):
             self.pickBtn,
         ]
 
-    def set_init(self, file_picker:ft.FilePicker, setting_data:frm.SettingData) -> Tuple[str, ...]:
+    def set_init(self, file_picker:ft.FilePicker, path_from_setting:Optional[str]) -> Tuple[str, ...]:
         self.filePicker = file_picker
         self.filePicker.on_result = self._pick_event
         self.pathTxtf.on_blur = self._txtf_on_blur_event
         self.pickBtn.on_click = self._pick_btn_event
-        label = self.pickIdx.get_setting_label()
-        if label is None: self.path_change()
-        else: self.path_change(setting_data[label])
+        self.path_change(path_from_setting)
         return (
             f'PickerBar_{self.pickIdx.value}_initialize -->',
             f'  fileType    -> {self.pickIdx.get_fileType()}',
@@ -130,7 +127,7 @@ class If_FilePickerBar(ft.Row):
 class Data_BtmBtnPropsDict(Dict[en.BtmBtnIdx, Data_BtmBtnProperties]):
     def __init__(self):
         super().__init__()
-class If_TabContainer(ft.Container):
+class Itf_TabContainer(ft.Container):
     def __init__(self, tab_idx:en.TabIdx, dflt_visible:bool):
         super().__init__(
             expand=True,
@@ -141,13 +138,14 @@ class If_TabContainer(ft.Container):
         )
         self.tabIdx = tab_idx
         self.controls:List[ft.Control] = []
-        self._parent: frm.MainAppFrame
+        #self._parent: ft.Container
         self._dictProps:Data_BtmBtnPropsDict
 
-    def set_init(self, parent:frm.MainAppFrame):
-        self._parent = parent
+    def set_init(self, parent:ft.Container) -> Tuple[str, ...]:
         self._dictProps = self._set_btmBtn_prop()
-        self._parent.appLogger.info(f'{self.tabIdx.get_tab_name()} is initialized.')
+        return (
+            f'{self.tabIdx.get_tab_name()} is initialized.',
+        )
 
     def _set_btmBtn_prop(self) -> Data_BtmBtnPropsDict:
         props = Data_BtmBtnPropsDict()
@@ -169,7 +167,7 @@ class If_TabContainer(ft.Container):
         return props
 
     def _btmBtn_dflt_event(self, e:ft.ControlEvent):
-        self._parent.appLogger.error("This is BtmBtn's default event.")
+        #self._parent.appLogger.error("This is BtmBtn's default event.")
         raise ValueError("ボタンに機能が付加されていないにもかかわらずクリックできる状態です")
     def _btmBtn_exit_event(self, e:ft.ControlEvent):
         self.page.window.close()
@@ -221,3 +219,14 @@ class If_ViewLogHandler(Handler):
     def emit(self, record: LogRecord):
         msg = self.format(record)
         self.terminalView.log_write(msg, record.levelname)
+
+class If_Txtf_CellData(ft.TextField):
+    def __init__(self, cell_data_label:en.CellDataLabel, label:str, hint_text:str, read_only:bool=True):
+        super().__init__(
+            expand=1,
+            dense=True,
+            label=label,
+            hint_text=hint_text,
+            read_only=read_only
+        )
+        self.cellDataLbl = cell_data_label

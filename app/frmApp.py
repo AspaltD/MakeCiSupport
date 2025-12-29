@@ -168,68 +168,60 @@ class GjfData(List[str]):
                 self.append(outline.replace('_', ' '))
         self.print_self()
 
-class FileData_Value(List[str]):
-    def __init__(self, data_label:en.CellDataLabel, *value:str):
-        self.dataLabel = data_label
-        if len(value) > self.dataLabel.get_label_max_len():
-            self = ["Invalid value"]
-            return
-        for v in value:
-            self.append(v)
+class FileData_Value():
+    def __init__(self, cell_info_label:en.CellInfoLbl, *values:str):
+        self._cellInfoLbl:en.CellInfoLbl = cell_info_label
+        self._value:List[str] = list()
+        for v in values:
+            self._value.append(v)
 
-    def check_label_len(self)->bool:
-        if len(self) >= self.dataLabel.get_label_max_len(): return False
-        return True
+    def get_label(self) -> en.CellInfoLbl:
+        return en.CellInfoLbl(self._cellInfoLbl)
 
-    def append(self, object: str) -> None:
-        if not self.check_label_len():
-            appLogger.info("This value is max length.")
-            return
-        return super().append(object)
+    def get_value(self) -> List[str]:
+        return copy.deepcopy(self._value)
     
-    def get_self(self) -> FileData_Value:
-        return copy.deepcopy(self)
+    def get_print(self) -> str:
+        return f'{self._cellInfoLbl.value} = {self._value}'
+    
+    def change_value(self, value:List[str]) -> List[str]:
+        if len(value) == 0: raise ValueError("引数の中身が不正です")
+        lastValue = self.get_value()
+        self._value = value
+        return lastValue
+    
+    def get_output_line(self) -> str:
+        match self._cellInfoLbl.value:
+            case 'atoms':
+                return '   '.join(self._value)
+            case _:
+                return self._cellInfoLbl.value + "   " + self._value[0]
 
 class FileData(List[FileData_Value]):
     def __init__(self):
-        self.append_value(en.CellDataLabel.STATE, "Initialize")
+        self.append_value(en.CellInfoLbl.STATE, "Initialize")
 
-    def append_value(self, cell_data_label:en.CellDataLabel, *value:str) -> None:
-        return self.append(FileData_Value(cell_data_label, *value))
+    def append_value(self, cell_info_label:en.CellInfoLbl, *value:str) -> None:
+        return self.append(FileData_Value(cell_info_label, *value))
 
     def print_data(self):
-        i = -1
         appLogger.info("idx: value")
+        i = -1
         for value in self:
             i += 1
-            appLogger.info(f'{i}: {value}')
+            appLogger.info(f'{i}: {value.get_print()}')
 
-    def search_get_value_single(self, cell_data_label:en.CellDataLabel) -> Optional[FileData_Value]:
-        if cell_data_label == en.CellDataLabel.ATOM: return None
-        if cell_data_label == en.CellDataLabel.CELL_LENGTH: return None
-        if cell_data_label == en.CellDataLabel.CELL_ANGLE: return None
+    def get_value(self, cell_info_label:en.CellInfoLbl) -> Optional[List[str]]:
         for value in self:
-            if value.dataLabel == cell_data_label: return value.get_self()
+            if value.get_label() == cell_info_label:
+                return value.get_value()
         return None
-    
-    def search_get_value_branch(self, cell_data_label:en.CellDataLabel, branch:str) -> Optional[FileData_Value]:
-        #if cell_data_label != (en.CellDataLabel.CELL_LENGTH or en.CellDataLabel.CELL_ANGLE): return None
-        for value in self:
-            if value[0] == (value.dataLabel.get_label_str() + branch): return value.get_self()
-        return None
-    
-    def search_get_value_atoms(self) -> List[FileData_Value]:
-        atomList:List[FileData_Value] = []
-        for value in self:
-            if value.dataLabel is en.CellDataLabel.ATOM:
-                atomList.append(value.get_self())
-        return atomList
 
-    def read_cif_file(self, cifPath:Path) -> bool:
-        if not Path.is_file(cifPath): return False
-        if cifPath.suffix[1:] != 'cif': return False
+    def read_cif_file(self, cifPath:Path):
+        if not Path.is_file(cifPath): raise FileExistsError("指定されたパスのファイルが存在しません")
+        if cifPath.suffix[1:] != 'cif': raise ValueError("ファイルの拡張子が正しくありません")
         self.clear()
-        self.append_value(en.CellDataLabel.STATE, "FileData_CIF")
+        self.append_value(en.CellInfoLbl.STATE, "FileData_CIF")
         i:int = -1
         atoms:bool = False
         atom1stIdx:int = 0
@@ -238,28 +230,25 @@ class FileData(List[FileData_Value]):
             for lineS in f:
                 i += 1
                 line = lineS.strip()
-                if i >= 450:
-                    appLogger.error("readline is over.(400 lines)")
-                    return False
+                if i >= 450: raise ValueError("readline is over.(450 lines)")
                 if i == 0:
                     if not cifPath.stem.lower() in line:
-                        appLogger.info("file is not compleat by Olex2-1.5")
-                        return False
-                    self.append_value(en.CellDataLabel.FILE_NAME, "fileName", line)
+                        raise ValueError("file is not compleat by Olex2-1.5")
+                    self.append_value(en.CellInfoLbl.DATA_NAME, line)
                     continue
                 if "_space_group_IT_number" in line:
-                    self.append_value(en.CellDataLabel.SPACE_GROUP_IT_NUM, "space_group_IT_number", line.split()[1])
+                    self.append_value(en.CellInfoLbl.SPACE_G_IT_NUM, line.split()[1])
                 elif "_space_group_name_H-M_alt" in line:
                     stock = line.split("'")
-                    self.append_value(en.CellDataLabel.SPACE_GROUP_NAME, "space_group_name_H-M_alt", '_'.join(stock[1].split(' ')))
-                elif "_cell_length_" in line:
+                    self.append_value(en.CellInfoLbl.SPACE_G_NAME, '_'.join(stock[1].split(' ')))
+                elif ("_cell_length_" or "_cell_angle_" or "_cell_volume") in line:
                     stock = line.split()
-                    self.append_value(en.CellDataLabel.CELL_LENGTH, stock[0][1:], stock[1].split('(')[0])
-                elif "_cell_angle_" in line:
-                    stock = line.split()
-                    self.append_value(en.CellDataLabel.CELL_ANGLE, stock[0][1:], stock[1].split('(')[0])
-                elif "_cell_volume" in line:
-                    self.append_value(en.CellDataLabel.CELL_VOLUME, "cell_volume", line.split()[1].split('(')[0])
+                    for lbl in en.CellInfoLbl:
+                        #stock[インデックス][文字列の何番目か]
+                        if lbl.value == stock[0][1:]:
+                            self.append_value(lbl, stock[1].split('(')[0])
+                            break
+                    continue
                 elif "_atom_site_disorder_group" in line:
                     atoms = True
                     atom1stIdx = 1
@@ -267,8 +256,8 @@ class FileData(List[FileData_Value]):
                     continue
                 elif "loop_" in line:
                     if atoms:
-                        appLogger.info("read finished")
-                        appLogger.info("i: " + str(i))
+                        #appLogger.info("read finished")
+                        #appLogger.info("i: " + str(i))
                         break
                     else:
                         atoms = False
@@ -284,92 +273,129 @@ class FileData(List[FileData_Value]):
                     atomName = atomParts[1]
                     if atom1stIdx == 1 and atom2ndIdx == 1:
                         pass
-                    elif atomName == self[-1][0]:
-                        atom1stIdx = int(self[-1][1])
+                    elif atomName == self[-1].get_value()[0]:
+                        atom1stIdx = int(self[-1].get_value()[1])
                     else:
-                        atom1stIdx = int(self[-1][1]) + 1
+                        atom1stIdx = int(self[-1].get_value()[1]) + 1
                         atom2ndIdx = 1
                     #? リストへの追加。次も同じ種類の元素と仮定してatomSexIdxを+1して次へ。
                     #? また，occの有無を判別して混晶なら占有比の抜き出しも行う
-                    self.append_value(en.CellDataLabel.ATOM, atomName,str(atom1stIdx),str(atom2ndIdx),atomParts[2].split('(')[0],atomParts[3].split('(')[0],atomParts[4].split('(')[0])
+                    self.append_value(en.CellInfoLbl.ATOMS,
+                                    atomName, str(atom1stIdx), str(atom2ndIdx),
+                                    atomParts[2].split('(')[0], atomParts[3].split('(')[0], atomParts[4].split('(')[0]
+                                    )
                     atom2ndIdx += 1
                     if not atomParts[7] == "1":
-                        self[-1].append(atomParts[7].split('(')[0])
+                        value = self[-1].get_value()
+                        value.append(atomParts[7].split('(')[0])
+                        self[-1].change_value(value)
         self.print_data()
         self.save_outpuuuut_file()
-        return True
 
-    def read_output_file(self, outputFilePath:Path)->bool:
-        if not Path.is_file(outputFilePath): return False
-        if outputFilePath.suffix[1:] != 'txt': return False
+    def read_output_file(self, outputPath:Path):
+        if not Path.is_file(outputPath): raise FileExistsError("指定されたパスのファイルが存在しません")
+        if outputPath.suffix[1:] != 'txt': raise ValueError("ファイルの拡張子が正しくありません")
         self.clear()
-        self.append_value(en.CellDataLabel.STATE, "FileData_Output")
+        self.append_value(en.CellInfoLbl.STATE, "FileData_Output")
         i:int = -1
-        with open(outputFilePath) as f:
+        with open(outputPath) as f:
             for lineS in f:
                 i += 1
                 line = lineS.strip()
                 if i >= 200:
-                    appLogger.info("readline is over.(200)")
-                    return False
+                    appLogger.error("readline is over.(200)")
+                    raise ValueError("読み取り上限を超えました(200 lines)")
                 if i == 0:
-                    if not re.match('MakeCi_.*', line):
-                        appLogger.info("This txt_file is not output_file.")
-                        return False
+                    if not re.match('makeCi_.*', line):
+                        appLogger.error("This txt_file is not output_file.")
+                        raise ValueError("読み取り可能なファイルではありません")
                     else: continue
-
                 lineP = line.split()
-                for label in en.CellDataLabel:
-                    if re.match(label.get_label_re(), lineP[0]):
-                        self.append_value(label)
+                if lineP[0] in en.CellInfoLbl:
+                    self.append_value(en.CellInfoLbl(lineP[0]), lineP[1])
+                    continue
+                """
+                for label in en.CellInfoLbl:
+                    if lineP[0] == label.value:
+                        self.append_value(label, lineP[1])
                         break
-                for data in lineP:
-                    self[-1].append(data)
+                """
+                if re.match('[A-Z][a-z]?', lineP[0]):
+                    self.append_value(en.CellInfoLbl.ATOMS, "init")
+                    self[-1].change_value(lineP)
+                    continue
             appLogger.info(f"end_line: {i}")
         self.print_data()
         self.save_outpuuuut_file()
-        return True
 
     def save_outpuuuut_file(self):
-        outputLines:List[str] = ["MakeCi_output"]
-        if not re.match('FileData_.*', self[0][0]): return
-        for line in self:   #! writeメソッドをforの内側に入れる？
-            if re.match('FileData_.*', line[0]): continue
-            outputLines.append('   '.join(line))
+        if not re.match('FileData_.*', self[0].get_value()[0]):
+            appLogger.error("file_data is not true")
+            self.clear()
+            self.append_value(en.CellInfoLbl.STATE, "Initialize")
+            raise ValueError("ファイルデータが正しくありません")
         with open(OUTPUUUUT_PATH, mode='w') as f:
-            f.write('\n'.join(outputLines))
+            f.write("makeCi_output"+'\n')
+            for line in self:
+                if line.get_label().name == 'STATE': continue
+                f.write(line.get_output_line() + '\n')
+        appLogger.info("outpuuuut saved")
 
-    def save_output_file(self, outputPath:Path)->bool:
-        if outputPath.suffix[1:] == "": return False
-        if outputPath.suffix[1:] != "txt": return False
-        #if not Path.exists(outputPath): return False
-        if not re.match('FileData_.*', self[0][0]): return False
+    def save_output_file(self, outputPath:Path):
+        if outputPath.suffix[1:] == "": raise ValueError("ディレクトリは指定できません")
+        if outputPath.suffix[1:] != "txt": raise ValueError("拡張子が不正です")
+        if not outputPath.parent.exists(): raise ValueError("ディレクトリが存在しません")
+        if not outputPath.is_file(): outputPath.touch()
+        state = self.get_value(en.CellInfoLbl.STATE)
+        if state is None: raise ValueError("ファイルデータが正しくありません")
+        if not re.match('FileData_.*', state[0]): raise ValueError("ファイルデータが出力可能ではありません")
         with open(outputPath, mode='w') as f:
             f.write("MakeCi_output"+'\n')
             for line in self:
-                if re.match('FileData_.*', line[0]): continue
-                outputLine = '   '.join(line)
-                f.write(outputLine + '\n')
-        return True
+                if line.get_label().name == 'STATE': continue
+                f.write(line.get_output_line() + '\n')
+        appLogger.info(f'{outputPath.stem} saved')
 
-    def change_file_name(self, newFileName:str)->Optional[str]:
+    def change_file_name(self, newFileName:str) -> Optional[str]:
         if '\\' in newFileName: return None
         if '.' in newFileName: return None
         if ' ' in newFileName: return None
         if newFileName == "": return None
         for value in self:
-            if value[0] == "fileName":
-                lastName = value[1]
-                value[1] = newFileName
-                return lastName
+            if value.get_label().value == 'data_name':
+                lastName = value.change_value([newFileName])
+                return lastName[0]
         return None
 
-class Tab99_PlaceHoldeeeer(itf.If_TabContainer):
+class Btm_BtnBar(ft.Row):
+    def __init__(self):
+        super().__init__(
+            expand=1,
+            alignment=ft.MainAxisAlignment.END,
+            controls=self._add_btn()
+        )
+
+    def _add_btn(self) -> List[itf.If_BottomFuncBtn]:
+        controls:List[itf.If_BottomFuncBtn] = []
+        for btnIdx in en.BtmBtnIdx:
+            controls.append(itf.If_BottomFuncBtn(btnIdx))
+        return controls
+    
+    def change_btn_properties(self, *dict_properties:itf.Data_BtmBtnProperties):
+        for prop in dict_properties:
+            for btn in self.controls:
+                if not isinstance(btn, itf.If_BottomFuncBtn): continue
+                if btn.btmBtnIdx == prop.BTMBTNIDX:
+                    msgs = btn.change_property(prop)
+                    for msg in msgs: appLogger.debug(msg)
+                    break
+
+class Tab99_PlaceHoldeeeer(itf.Itf_TabContainer):
     def __init__(self):
         super().__init__(en.TabIdx.PLACE_HOLDER, True)
         self.content = ft.Placeholder(color=ft.Colors.random())
 
-class Tab0_BuilderPathSelect(itf.If_TabContainer):
+class Tab0_BuilderPathSelect(itf.Itf_TabContainer):
     def __init__(self):
         super().__init__(en.TabIdx.FILE_PATH_SELECT, True)
         self.pickBuilder = itf.If_FilePickerBar(en.FilePickerIdx.BUILDER_PICK)
@@ -435,6 +461,212 @@ class Tab0_BuilderPathSelect(itf.If_TabContainer):
         self._parent.appLogger.info("<-- end")
         self.update()
 
+class Tab1_ReadData(itf.Itf_TabContainer):
+    def __init__(self):
+        super().__init__(en.TabIdx.READ_DATA, False)
+        #* 格子定数用
+            #*個別データ
+        self.dataName = itf.If_Txtf_CellData(cell_data_label=en.CellDataLabel.FILE_NAME, label="Data_Name", hint_text="fileName", read_only=False)
+        self.spaceGItNum = itf.If_Txtf_CellData(cell_data_label=en.CellDataLabel.SPACE_GROUP_IT_NUM, label="SpaceG_IT_Num", hint_text="space_group_IT_number")
+        self.spaceGName = itf.If_Txtf_CellData(cell_data_label=en.CellDataLabel.SPACE_GROUP_NAME, label="SpaceG_Name", hint_text="space_group_name_H-M_alt")
+        self.cellLenA = itf.If_Txtf_CellData(cell_data_label=en.CellDataLabel.CELL_LENGTH, label="Cell_Length_a", hint_text="cell_length_a")
+        self.cellLenB = itf.If_Txtf_CellData(cell_data_label=en.CellDataLabel.CELL_LENGTH, label="Cell_Length_b", hint_text="cell_length_b")
+        self.cellLenC = itf.If_Txtf_CellData(cell_data_label=en.CellDataLabel.CELL_LENGTH, label="Cell_Length_c", hint_text="cell_length_c")
+        self.cellAngleA = itf.If_Txtf_CellData(cell_data_label=en.CellDataLabel.CELL_ANGLE, label="Cell_Angle_alpha", hint_text="cell_angle_alpha")
+        self.cellAngleB = itf.If_Txtf_CellData(cell_data_label=en.CellDataLabel.CELL_ANGLE, label="Cell_Angle_beta", hint_text="cell_angle_beta")
+        self.cellAngleC = itf.If_Txtf_CellData(cell_data_label=en.CellDataLabel.CELL_ANGLE, label="Cell_Angle_gamma", hint_text="cell_angle_gamma")
+        self.cellVolume = itf.If_Txtf_CellData(cell_data_label=en.CellDataLabel.CELL_VOLUME, label="Cell_Volume", hint_text="cell_volume")
+        self.txtfList:List[itf.If_Txtf_CellData] = [
+            self.dataName, self.spaceGItNum, self.spaceGName,
+            self.cellLenA, self.cellLenB, self.cellLenC,
+            self.cellAngleA, self.cellAngleB, self.cellAngleC,
+            self.cellVolume
+        ]
+            #* 格子定数コンテンツ全体
+        self.cellDataGroup = ft.Column(
+            expand=2,
+            controls=[
+                self.dataName,
+                ft.Row(
+                    spacing=0,
+                    controls=[self.cellLenA, self.cellLenB, self.cellLenC]
+                ),
+                ft.Row(
+                    spacing=0,
+                    controls=[self.cellAngleA, self.cellAngleB, self.cellAngleC]
+                ),
+                ft.Row(
+                    spacing=0,
+                    controls=[self.spaceGItNum, self.spaceGName, self.cellVolume]
+                )
+            ]
+        )
+        #* 原子座標の表関連
+        self.selectedRows:List[int] = []
+        self.readTable = ft.DataTable(
+            border = ft.border.all(1, ft.Colors.BLACK),
+            show_checkbox_column=True,
+            column_spacing=24,
+            columns=[
+                ft.DataColumn(ft.Text("Atom")),
+                ft.DataColumn(ft.Text(" Idx1 "),heading_row_alignment=ft.MainAxisAlignment.CENTER,numeric=True),
+                ft.DataColumn(ft.Text(" Idx2 "),heading_row_alignment=ft.MainAxisAlignment.CENTER,numeric=True),
+                ft.DataColumn(ft.Text("  X  "),heading_row_alignment=ft.MainAxisAlignment.CENTER,numeric=True),
+                ft.DataColumn(ft.Text("  Y  "),heading_row_alignment=ft.MainAxisAlignment.CENTER,numeric=True),
+                ft.DataColumn(ft.Text("  Z  "),heading_row_alignment=ft.MainAxisAlignment.CENTER,numeric=True),
+                ft.DataColumn(ft.Text("Occ."),numeric=True)
+            ],
+            rows=[]
+        )
+
+        #* コンテンツの配置
+        self.content = ft.Column(
+            controls=[
+                self.cellDataGroup,
+                ft.Column(
+                    expand=3,
+                    controls=[
+                        self.readTable
+                    ],
+                    scroll=ft.ScrollMode.ALWAYS
+                )
+            ]
+        )
+
+        #* 保存機能用ファイルピッカー関連
+        self.saveFilePicker:ft.FilePicker
+        self.outputPath:Path
+
+    def set_init(self, parent: MainAppFrame):
+        super().set_init(parent)
+        self.dataName.on_blur = self.rename_event
+        self.saveFilePicker = filePickers[en.FilePickerIdx.OUTPUT_SAVE]
+        self.saveFilePicker.on_result = self.pick_files_result
+
+    def _set_btmBtn_prop(self) -> itf.Data_BtmBtnPropsDict:
+        props = super()._set_btmBtn_prop()
+
+        return props
+
+    def insert_cells(self):
+        # txtf_idx -> 0:fileName, 1:SpaceGITNum, 2:SpaceGName,
+        # 3:CellLen_a, 4:CellLen_b, 5:CellLen_c,
+        # 6:CellAngle_a, 7:CellAngle_b, 8:CellAngle_c, 9:CellVolume
+        #* read_row -> data = インデックス番号
+        self.readTable.rows = []
+        read_row:ft.DataRow
+        i:int = -1
+        n:int = 0
+        for inList in fileData:
+            i += 1
+            match inList.dataLabel.name:
+                case 'STATE':
+                    if re.match('FileData_.*',inList[0]): continue
+                    self._parent.appLogger.error("this file_data is not true.")
+                    raise ValueError("ファイルデータが正しくありません")
+                case 'ATOM':
+                    if not re.match('[A-Z][a-z]{0,1}', inList[0]):
+                        read_row = ft.DataRow(cells=[], data=n, on_select_changed=self.row_CBox_clicked)
+                        for value in inList:
+                            read_row.cells.append(ft.DataCell(ft.Text(value=value)))
+                        while len(inList) < 7:
+                            read_row.cells.append(ft.DataCell(ft.Text("-")))
+                        self.readTable.rows.append(read_row)
+                        n += 1
+                case x:
+                    for txtf in self.txtfList:
+                        if x == txtf.cellDataLbl.name:
+                            txtf.value = inList[1]
+                            break
+                    
+            if i == 0:
+                if re.match('FileData_.*',inList[0]):
+                    continue
+                else:
+                    return
+            elif i == 400:
+                appLogger.info("list length is over(400)")
+                return
+            else:
+                atom:bool = True
+                    #* 格子の基礎データ(txtfに入力されるもの)を挿入。
+                for txtf in self.txtfList:
+                    if inList[0] == txtf.hint_text:
+                        txtf.value = inList[1]
+                        atom = False
+                    #* 原子座標をデータテーブルに入力。
+                if atom and re.match('[A-Z][a-z]{0,1}', inList[0]):
+                    read_row = ft.DataRow(cells=[],data=n,on_select_changed=self.row_CBox_clicked)
+                    for inData in inList:
+                        read_row.cells.append(ft.DataCell(ft.Text(value=inData)))
+                    if len(inList) <= 6:
+                        read_row.cells.append(ft.DataCell(ft.Text("-")))
+                    self.readTable.rows.append(read_row)
+                    n += 1
+                else:
+                    pass
+
+    def rename_event(self, e:ft.ControlEvent):
+        if fileData.search_get_value_single(en.CellDataLabel.FILE_NAME) is None: return
+        if e.control.value is None: self.dataName.value = fileData.search_get_value_single(en.CellDataLabel.FILE_NAME)[-1]
+        if not e.control.value.strip(): self.dataName.value = fileData.search_get_value_single(en.CellDataLabel.FILE_NAME)[-1]
+        if fileData.change_file_name(e.control.value) is None: self.dataName.value = fileData.search_get_value_single(en.CellDataLabel.FILE_NAME)[-1]
+        self.update()
+
+    #* 行をクリックしたときに削除リストに追加したり消したりするイベント。
+    #* 実際に行を消すイベントは本体にある。
+    def row_CBox_clicked(self,e:ft.ControlEvent):
+        if e.control.selected:
+            e.control.selected = False
+            for idx in self.selectedRows:
+                if idx == e.control.data:
+                    self.selectedRows.remove(idx)
+                else:
+                    pass
+        else:
+            e.control.selected = True
+            self.selectedRows.append(e.control.data)
+        appLogger.info(self.selectedRows)
+        self.update()
+
+    def commit_fileData(self):
+        tab1FileData:FileData = FileData()
+        tab1FileData.clear()
+        tab1FileData.append_value(en.CellDataLabel.STATE, "FileData_commit")
+        for txtf in self.txtfList:
+            tab1FileData.append_value(txtf.cellDataLbl, txtf.hint_text, txtf.value)
+        for row in self.readTable.rows:
+            tab1FileData.append_value(en.CellDataLabel.ATOM)
+            for cell in row.cells:
+                if cell.content.value == "-": pass
+                else: tab1FileData[-1].append(str(cell.content.value))
+        #global fileData
+        fileData = copy.deepcopy(tab1FileData)
+        fileData.save_outpuuuut_file()
+
+    def pick_files_result(self, e:ft.FilePickerResultEvent):
+        if e.path:
+            if re.match('.*txt',e.path):
+                self.outputPath = Path(e.path)
+            else:
+                self.outputPath = Path(e.path+".txt")
+            appLogger.info(self.outputPath)
+            self.commit_fileData()
+            fileData.save_output_file(self.outputPath)
+        self.update()
+
+    def dataTable_row_clear_event(self, e):
+        if self.readTable.rows is None: return
+        if len(self.readTable.rows) == 0: return
+        for delIdx in self.selectedRows:
+            for row in self.readTable.rows:
+                if row.data == 404: continue
+                if row.data == delIdx:
+                    lastData = row.cells
+                    self.readTable.rows.remove(row)
+                    appLogger.info(lastData)
+            lastIdx = self.selectedRows.remove(delIdx)
+        self.update()
 
 
 class MainAppFrame(ft.Container):
@@ -453,26 +685,26 @@ class MainAppFrame(ft.Container):
         #タブたち
         self.cn_tab99 = Tab99_PlaceHoldeeeer()
         self.cn_tab0 = Tab0_BuilderPathSelect()
-#       self.cn_tab1 = Cn_Tab1_ReadData()
+        self.cn_tab1 = Tab1_ReadData()
 #        self.cn_tab2 = Cn_Tab2_BuilderLog()
 #        self.cn_tab3 = Cn_Tab3_BuilderResult()
 #        self.cn_tab4 = Cn_Tab4_MIPathSelect()
 #        self.cn_tab5 = Cn_Tab5_GJFPreview()
         self.cn_tabContents.controls = [
                 self.cn_tab99,
-                self.cn_tab2,
+                #self.cn_tab2,
                 self.cn_tab0,
                 self.cn_tab1,
-                self.cn_tab3,
-                self.cn_tab4,
-                self.cn_tab5,
+                #self.cn_tab3,
+                #self.cn_tab4,
+                #self.cn_tab5,
             ]
         self.right_tabBase.controls.append(self.cn_tabContents)
         #ボトムボタンたち
-        self.btmBtn_Next = bb.BtmBtn_Next(self.btmBtn_def_event)
-        self.btmBtn_Exit = bb.BtmBtn_EXit(self.btmBtn_exit_event)
-        self.btmBtn_Func1 = bb.BtmBtn_Func1(self.btmBtn_def_event)
-        self.btmBtn_Func2 = bb.BtmBtn_Func2(self.btmBtn_def_event)
+        self.btmBtn_Next = itf.If_BottomFuncBtn(en.BtmBtnIdx.NEXT_TAB)
+        self.btmBtn_Exit = itf.If_BottomFuncBtn(en.BtmBtnIdx.EXIT_APP)
+        self.btmBtn_Func1 = itf.If_BottomFuncBtn(en.BtmBtnIdx.OTHER_FUNC1)
+        self.btmBtn_Func2 = itf.If_BottomFuncBtn(en.BtmBtnIdx.OTHER_FUNC2)
         self.btmBtnContents.controls =[
                 self.btmBtn_Func2,
                 self.btmBtn_Func1,
@@ -496,7 +728,7 @@ class MainAppFrame(ft.Container):
         self.appLogger.debug(f'tab_change -> {toTabIdx.get_tab_name()}')
         propsDict:itf.Data_BtmBtnPropsDict
         for tab in self.cn_tabContents.controls:
-            if not isinstance(tab, itf.If_TabContainer): continue
+            if not isinstance(tab, itf.Itf_TabContainer): continue
             if tab.change_self_visible(toTabIdx): propsDict = tab.get_dict_props()
             #else: propsDict = 
         for btn in self.btmBtnContents.controls:
@@ -618,7 +850,7 @@ def main(page: ft.Page):
     
 
 
-    makeCiSup = MakeCiSupApp()
+    mainAppFrame = MainAppFrame()
 
 
     def window_close_event(e):
@@ -628,11 +860,12 @@ def main(page: ft.Page):
     
     page.window.prevent_close = True
     page.window.on_event = window_close_event
-    page.add(makeCiSup)
+    page.add(mainAppFrame)
     page.window.center()
     #page.window.always_on_top = True
     page.update()
     
+    """
     global appLogger
     appLogger = create_app_logger(
         name="myapp",
@@ -654,6 +887,7 @@ def main(page: ft.Page):
     makeCiSup.cn_tab4.set_txtf_init()
     makeCiSup.ciAuto.set_appLogger(appLogger)
     makeCiSup.tab_change(en.TabIdx.FILE_PATH_SELECT)
+    """
     page.update()
     
 

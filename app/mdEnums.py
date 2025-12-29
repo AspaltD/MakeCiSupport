@@ -11,6 +11,19 @@ class SettingLabel(Enum):
     MI_PATH = "mi_path"
     DEF_GJF_PATH = "def_gjf_path"
 
+class CellInfoLbl(Enum):
+    STATE = "state"
+    DATA_NAME = "data_name"
+    SPACE_G_IT_NUM = "space_group_IT_number"
+    SPACE_G_NAME = "space_group_name_H-M_alt"
+    CELL_LEN_A = "cell_length_a"
+    CELL_LEN_B = "cell_length_b"
+    CELL_LEN_C = "cell_length_c"
+    CELL_ANGLE_A = "cell_angle_alpha"
+    CELL_ANGLE_B = "cell_angle_beta"
+    CELL_ANGLE_C = "cell_angle_gamma"
+    CELL_VOLUME = "cell_volume"
+    ATOMS = "atoms"
 
 class CellDataLabel(IntEnum):
     STATE = 0

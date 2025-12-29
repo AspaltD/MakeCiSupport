@@ -238,7 +238,7 @@ class FileData(List[FileData_Value]):
         with open(cifPath) as f:
             for lineS in f:
                 i += 1
-                line = lineS.strip()
+                line = lineS.rstrip()
                 if i >= 450:
                     appLogger.error("readline is over.(400 lines)")
                     return False
@@ -255,6 +255,7 @@ class FileData(List[FileData_Value]):
                     self.append_value(en.CellDataLabel.SPACE_GROUP_NAME, "space_group_name_H-M_alt", '_'.join(stock[1].split(' ')))
                 elif "_cell_length_" in line:
                     stock = line.split()
+                    print(stock[0][1:])
                     self.append_value(en.CellDataLabel.CELL_LENGTH, stock[0][1:], stock[1].split('(')[0])
                 elif "_cell_angle_" in line:
                     stock = line.split()
