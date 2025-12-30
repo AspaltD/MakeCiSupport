@@ -11,6 +11,7 @@ import mdEnums as en
 import mdAutoRun as ar
 import mdTabChangeBar as tcb
 import mdBottomButtons as bb
+import mdInterfaces as itf
 
 filePickers: Dict[en.FilePickerIdx, ft.FilePicker] = {}
 fileData:FileData
@@ -24,8 +25,8 @@ class SettingData(Dict[en.SettingLabel, str]):
     def __init__(self):
         self.settingPath = Path('./datatext/makeci_setting.txt')
         self.appVerType = "beta"
-        self.appVerNum = "4.0"
-        self._allowVerNum = 4.0
+        self.appVerNum = "6.0"
+        self._allowVerNum = 6.0
 
         for label in en.SettingLabel:
             self[label] = "None"
@@ -80,7 +81,7 @@ class SettingData(Dict[en.SettingLabel, str]):
         with open(self.settingPath) as f:
             for lineS in f:
                 lineP = lineS.rstrip().split(sep=';')
-                if len(lineP) == 0: continue
+                if len(lineP) <= 1: continue
                 lineP[1] = ';'.join(lineP[1:])
                 for label in en.SettingLabel:
                     if label.value == lineP[0]:
@@ -107,7 +108,7 @@ class GjfData(List[str]):
 
     def read_gjf(self, gjf_path:Path) -> bool:
         self.clear()
-        appLogger.info("read_gjf")
+        appLogger.info("read_gjf -->")
         complete = True
         i = -1
         with open(gjf_path) as f:
@@ -123,6 +124,7 @@ class GjfData(List[str]):
                         if i >= 6: break
                 self.append(line)
         self.print_self()
+        appLogger.info("<-- end")
         return complete
 
     def make_def_gjf(self):
@@ -148,6 +150,7 @@ class GjfData(List[str]):
                 if is_def and i >= 5: break
     
     def read_mi(self, mi_path:Path):
+        if len(self) >= 6: self = GjfData(self.defGjfPath)
         i = -1
         with open(mi_path) as f:
             for lineS in f:
@@ -167,70 +170,65 @@ class GjfData(List[str]):
                 self.append(outline.replace('_', ' '))
         self.print_self()
 
+class FileData_Value():
+    def __init__(self, cell_info_label:en.CellInfoLbl, value:Tuple[str, ...]):
+        self._lbl = cell_info_label
+        self._value = value
+        if len(value) == 0: self.change_value(())
 
-
-class FileData_Value(List[str]):
-    def __init__(self, data_label:en.CellDataLabel, *value:str):
-        self.dataLabel = data_label
-        if len(value) > self.dataLabel.get_label_max_len():
-            self = ["Invalid value"]
-            return
-        for v in value:
-            self.append(v)
-
-    def check_label_len(self)->bool:
-        if len(self) >= self.dataLabel.get_label_max_len(): return False
-        return True
-
-    def append(self, object: str) -> None:
-        if not self.check_label_len():
-            appLogger.info("This value is max length.")
-            return
-        return super().append(object)
+    def get_label(self) -> en.CellInfoLbl:
+        return en.CellInfoLbl(self._lbl)
     
-    def get_self(self) -> FileData_Value:
-        return copy.deepcopy(self)
+    def get_value(self) -> Tuple[str, ...]:
+        return copy.deepcopy(self._value)
+    
+    def get_print(self) -> str:
+        return f'{self._lbl.value} = {self._value}'
+    
+    def change_value(self, new_value:Tuple[str, ...]) -> Tuple[str, ...]:
+        lastValue = self.get_value()
+        if len(new_value) == 0: self._value = ("None",)
+        else: self._value = new_value
+        return lastValue
+    
+    def get_output_line(self) -> str:
+        match self._lbl.value:
+            case 'atoms':
+                return '   '.join(self._value)
+            case _:
+                return self._lbl.value + "   " + self._value[0]
 
 class FileData(List[FileData_Value]):
     def __init__(self):
-        self.append_value(en.CellDataLabel.STATE, "Initialize")
+        self.append_value(en.CellInfoLbl.STATE, ("Initialize",))
 
-    def append_value(self, cell_data_label:en.CellDataLabel, *value:str) -> None:
-        return self.append(FileData_Value(cell_data_label, *value))
+    def append_value(self, cell_info_label:en.CellInfoLbl, value:Tuple[str, ...]):
+        self.append(FileData_Value(cell_info_label, value))
 
     def print_data(self):
         i = -1
         appLogger.info("idx: value")
         for value in self:
             i += 1
-            appLogger.info(f'{i}: {value}')
+            appLogger.info(f'{i}: {value.get_print()}')
 
-    def search_get_value_single(self, cell_data_label:en.CellDataLabel) -> Optional[FileData_Value]:
-        if cell_data_label == en.CellDataLabel.ATOM: return None
-        if cell_data_label == en.CellDataLabel.CELL_LENGTH: return None
-        if cell_data_label == en.CellDataLabel.CELL_ANGLE: return None
+    def get_value(self, cell_info_label:en.CellInfoLbl) -> FileData_Value:
         for value in self:
-            if value.dataLabel == cell_data_label: return value.get_self()
-        return None
-    
-    def search_get_value_branch(self, cell_data_label:en.CellDataLabel, branch:str) -> Optional[FileData_Value]:
-        #if cell_data_label != (en.CellDataLabel.CELL_LENGTH or en.CellDataLabel.CELL_ANGLE): return None
-        for value in self:
-            if value[0] == (value.dataLabel.get_label_str() + branch): return value.get_self()
-        return None
-    
-    def search_get_value_atoms(self) -> List[FileData_Value]:
-        atomList:List[FileData_Value] = []
-        for value in self:
-            if value.dataLabel is en.CellDataLabel.ATOM:
-                atomList.append(value.get_self())
-        return atomList
+            if value.get_label() == cell_info_label:
+                return value
+        raise IndexError("This label is not in this list.")
 
-    def read_cif_file(self, cifPath:Path) -> bool:
-        if not Path.is_file(cifPath): return False
-        if cifPath.suffix[1:] != 'cif': return False
+    def get_value_value(self, cell_info_label:en.CellInfoLbl) -> Tuple[str, ...]:
+        for value in self:
+            if value.get_label() == cell_info_label:
+                return value.get_value()
+        raise IndexError("This label is not in this list.")
+
+    def read_cif_file(self, cifPath:Path):
+        if not Path.is_file(cifPath): raise FileExistsError("指定されたパスのファイルが存在しません")
+        if cifPath.suffix[1:] != 'cif': raise ValueError("ファイルの拡張子が正しくありません")
         self.clear()
-        self.append_value(en.CellDataLabel.STATE, "FileData_CIF")
+        self.append_value(en.CellInfoLbl.STATE, ("FileData_CIF",))
         i:int = -1
         atoms:bool = False
         atom1stIdx:int = 0
@@ -239,29 +237,25 @@ class FileData(List[FileData_Value]):
             for lineS in f:
                 i += 1
                 line = lineS.rstrip()
-                if i >= 450:
-                    appLogger.error("readline is over.(400 lines)")
-                    return False
+                if i >= 450: raise ValueError("readline is over.(450 lines)")
                 if i == 0:
                     if not cifPath.stem.lower() in line:
-                        appLogger.info("file is not compleat by Olex2-1.5")
-                        return False
-                    self.append_value(en.CellDataLabel.FILE_NAME, "fileName", line)
+                        raise ValueError("file is not compleat by Olex2-1.5")
+                    self.append_value(en.CellInfoLbl.DATA_NAME, (line,))
                     continue
                 if "_space_group_IT_number" in line:
-                    self.append_value(en.CellDataLabel.SPACE_GROUP_IT_NUM, "space_group_IT_number", line.split()[1])
+                    self.append_value(en.CellInfoLbl.SPACE_G_IT_NUM, (line.split()[1],))
                 elif "_space_group_name_H-M_alt" in line:
                     stock = line.split("'")
-                    self.append_value(en.CellDataLabel.SPACE_GROUP_NAME, "space_group_name_H-M_alt", '_'.join(stock[1].split(' ')))
-                elif "_cell_length_" in line:
+                    self.append_value(en.CellInfoLbl.SPACE_G_NAME, ('_'.join(stock[1].split(' ')),))
+                elif "_cell_" in line:
                     stock = line.split()
-                    print(stock[0][1:])
-                    self.append_value(en.CellDataLabel.CELL_LENGTH, stock[0][1:], stock[1].split('(')[0])
-                elif "_cell_angle_" in line:
-                    stock = line.split()
-                    self.append_value(en.CellDataLabel.CELL_ANGLE, stock[0][1:], stock[1].split('(')[0])
-                elif "_cell_volume" in line:
-                    self.append_value(en.CellDataLabel.CELL_VOLUME, "cell_volume", line.split()[1].split('(')[0])
+                    for lbl in en.CellInfoLbl:
+                        #stock[インデックス][文字列の何番目か]
+                        if lbl.value == stock[0][1:]:
+                            self.append_value(lbl, (stock[1].split('(')[0],))
+                            break
+                    continue
                 elif "_atom_site_disorder_group" in line:
                     atoms = True
                     atom1stIdx = 1
@@ -280,93 +274,95 @@ class FileData(List[FileData_Value]):
                 if atoms:
                     #? 行が正しく原子情報を示しているか判定
                     atomParts = line.split()
-                    if len(atomParts) < 5:
-                        continue
+                    if len(atomParts) < 5: continue
                     #? 第1，第2 インデックス番号の決定
                     atomName = atomParts[1]
                     if atom1stIdx == 1 and atom2ndIdx == 1:
                         pass
-                    elif atomName == self[-1][0]:
-                        atom1stIdx = int(self[-1][1])
+                    elif atomName == self[-1].get_value()[0]:
+                        atom1stIdx = int(self[-1].get_value()[1])
                     else:
-                        atom1stIdx = int(self[-1][1]) + 1
+                        atom1stIdx = int(self[-1].get_value()[1]) + 1
                         atom2ndIdx = 1
                     #? リストへの追加。次も同じ種類の元素と仮定してatomSexIdxを+1して次へ。
                     #? また，occの有無を判別して混晶なら占有比の抜き出しも行う
-                    self.append_value(en.CellDataLabel.ATOM, atomName,str(atom1stIdx),str(atom2ndIdx),atomParts[2].split('(')[0],atomParts[3].split('(')[0],atomParts[4].split('(')[0])
+                    self.append_value(en.CellInfoLbl.ATOMS, (atomName,str(atom1stIdx),str(atom2ndIdx),atomParts[2].split('(')[0],atomParts[3].split('(')[0],atomParts[4].split('(')[0]))
                     atom2ndIdx += 1
                     if not atomParts[7] == "1":
-                        self[-1].append(atomParts[7].split('(')[0])
+                        value = self[-1].get_value() + (atomParts[7].split('(')[0],)
+                        self[-1].change_value(value)
         self.print_data()
         self.save_outpuuuut_file()
-        return True
 
-    def read_output_file(self, outputFilePath:Path)->bool:
-        if not Path.is_file(outputFilePath): return False
-        if outputFilePath.suffix[1:] != 'txt': return False
+    def read_output_file(self, outputPath:Path):
+        if not Path.is_file(outputPath): raise FileExistsError("指定されたパスのファイルが存在しません")
+        if outputPath.suffix[1:] != 'txt': raise ValueError("ファイルの拡張子が正しくありません")
         self.clear()
-        self.append_value(en.CellDataLabel.STATE, "FileData_Output")
+        self.append_value(en.CellInfoLbl.STATE, ("FileData_Output",))
         i:int = -1
-        with open(outputFilePath) as f:
+        with open(outputPath) as f:
             for lineS in f:
                 i += 1
                 line = lineS.strip()
                 if i >= 200:
                     appLogger.info("readline is over.(200)")
-                    return False
+                    raise ValueError("読み取り上限を超えました(200 lines)")
                 if i == 0:
                     if not re.match('MakeCi_.*', line):
                         appLogger.info("This txt_file is not output_file.")
-                        return False
+                        raise ValueError("読み取り可能なファイルではありません")
                     else: continue
-
                 lineP = line.split()
-                for label in en.CellDataLabel:
-                    if re.match(label.get_label_re(), lineP[0]):
-                        self.append_value(label)
+                for label in en.CellInfoLbl:
+                    if label.value == lineP[0]:
+                        self.append_value(label, tuple(lineP))
                         break
-                for data in lineP:
-                    self[-1].append(data)
             appLogger.info(f"end_line: {i}")
         self.print_data()
         self.save_outpuuuut_file()
         return True
 
     def save_outpuuuut_file(self):
-        outputLines:List[str] = ["MakeCi_output"]
-        if not re.match('FileData_.*', self[0][0]): return
-        for line in self:   #! writeメソッドをforの内側に入れる？
-            if re.match('FileData_.*', line[0]): continue
-            outputLines.append('   '.join(line))
+        if not re.match('FileData_.*', self[0].get_value()[0]):
+            appLogger.error("file_data is not true")
+            self.clear()
+            self.append_value(en.CellInfoLbl.STATE, ("Initialize",))
+            raise ValueError("ファイルデータが正しくありません")
         with open(OUTPUUUUT_PATH, mode='w') as f:
-            f.write('\n'.join(outputLines))
+            f.write("makeCi_output"+'\n')
+            for line in self:
+                if line.get_label().name == 'STATE': continue
+                f.write(line.get_output_line() + '\n')
+        appLogger.info("outpuuuut saved")
 
-    def save_output_file(self, outputPath:Path)->bool:
-        if outputPath.suffix[1:] == "": return False
-        if outputPath.suffix[1:] != "txt": return False
-        #if not Path.exists(outputPath): return False
-        if not re.match('FileData_.*', self[0][0]): return False
+    def save_output_file(self, outputPath:Path):
+        if outputPath.suffix[1:] == "": raise ValueError("ディレクトリは指定できません")
+        if outputPath.suffix[1:] != "txt": raise ValueError("拡張子が不正です")
+        if not outputPath.parent.exists(): raise ValueError("ディレクトリが存在しません")
+        if not outputPath.is_file(): outputPath.touch()
+        state = self.get_value_value(en.CellInfoLbl.STATE)
+        if state[0] is "None": raise ValueError("ファイルデータが正しくありません")
+        if not re.match('FileData_.*', state[0]): raise ValueError("ファイルデータが出力可能ではありません")
         with open(outputPath, mode='w') as f:
             f.write("MakeCi_output"+'\n')
             for line in self:
-                if re.match('FileData_.*', line[0]): continue
-                outputLine = '   '.join(line)
-                f.write(outputLine + '\n')
-        return True
+                if line.get_label().name == 'STATE': continue
+                f.write(line.get_output_line() + '\n')
+        appLogger.info(f'{outputPath.stem} saved')
 
-    def change_file_name(self, newFileName:str)->Optional[str]:
+    def change_file_name(self, newFileName:str) -> Optional[str]:
         if '\\' in newFileName: return None
         if '.' in newFileName: return None
         if ' ' in newFileName: return None
         if newFileName == "": return None
-        for value in self:
-            if value[0] == "fileName":
-                lastName = value[1]
-                value[1] = newFileName
-                return lastName
-        return None
+        value = self.get_value(en.CellInfoLbl.DATA_NAME)
+        lastName = value.get_value()[0]
+        value.change_value((newFileName,))
+        appLogger.info(f"data_name changed to {newFileName}")
+        return lastName
 
 class Tab_FilePicker_Bar(ft.Row):
+#!削除予定
     def __init__(self, filePickerIdx:en.FilePickerIdx):
         super().__init__(
             spacing=0
@@ -436,18 +432,9 @@ class Tab_FilePicker_Bar(ft.Row):
         if self.filePath.name == "": return False
         return True
 
-class Tab0_FPBar_Builder(Tab_FilePicker_Bar):
-    def __init__(self):
-        super().__init__(filePickerIdx=en.FilePickerIdx.BUILDER_PICK)
-class Tab0_FPBar_CIF(Tab_FilePicker_Bar):
-    def __init__(self):
-        super().__init__(filePickerIdx=en.FilePickerIdx.CIF_PICK)
-class Tab0_FPBar_Output(Tab_FilePicker_Bar):
-    def __init__(self):
-        super().__init__(filePickerIdx=en.FilePickerIdx.OUTPUT_PICK)
-
 #* タブのコンテナ。
 class Cn_TabContainer(ft.Container):
+#! itfに機能移行
     def __init__(self, tabIdx:en.TabIdx, defVisible:bool):
         super().__init__(
             expand=True,
@@ -458,33 +445,60 @@ class Cn_TabContainer(ft.Container):
         )
         self.tabIdx = tabIdx
 
-class Cn_Tab99_PlaceHoldeeeer(Cn_TabContainer):
+class Cn_Tab99_PlaceHoldeeeer(itf.Itf_TabContainer):
     def __init__(self):
-        super().__init__(tabIdx=en.TabIdx.PLACE_HOLDER, defVisible=True)
+        super().__init__(tab_idx=en.TabIdx.PLACE_HOLDER, dflt_visible=True)
         self.content = ft.Placeholder(color=ft.Colors.random())
 
-class Cn_Tab0_FilePathSelect(Cn_TabContainer):
+class Cn_Tab0_FilePathSelect(itf.Itf_TabContainer):
     def __init__(self):
-        super().__init__(tabIdx=en.TabIdx.FILE_PATH_SELECT, defVisible=True)
-        self.pickBuilder = Tab0_FPBar_Builder()
-        self.pickCIF = Tab0_FPBar_CIF()
-        self.pickOutput = Tab0_FPBar_Output()
+        super().__init__(tab_idx=en.TabIdx.FILE_PATH_SELECT, dflt_visible=True)
+        self.pickBuilder = itf.If_FilePickerBar(en.FilePickerIdx.BUILDER_PICK)
+        self.pickCIF = itf.If_FilePickerBar(en.FilePickerIdx.CIF_PICK)
+        self.pickTXT = itf.If_FilePickerBar(en.FilePickerIdx.OUTPUT_PICK)
 
-        self.control:List[ft.Control] = [
+        self.controls = [
             ft.Text("Builder Path"),
             self.pickBuilder,
             ft.Text("CIF File Path"),
             self.pickCIF,
             ft.Text("Text File Path"),
-            self.pickOutput
+            self.pickTXT,
         ]
+        self.content = ft.Column(controls=self.controls)
 
-        self.content = ft.Column(controls=self.control)
+    def set_init(self) -> Tuple[str, ...]:
+        log = super().set_init()
+        for cont in self.controls:
+            if not isinstance(cont, itf.If_FilePickerBar): continue
+            log += cont.set_init(
+                file_picker=filePickers[cont.pickIdx],
+                path_from_setting=settingData[cont.pickIdx.get_setting_label()]
+            )
+        return log
 
-    def set_txtf_init(self):
-        for cont in self.control:
-            if not isinstance(cont, Tab_FilePicker_Bar): continue
-            cont.set_init()
+    def readCIF_event(self):
+        if self.pickBuilder.get_path() is None:
+            appLogger.warning("selected file is not match suffix (.exe)")
+            raise ValueError("選択されたファイルと指定の拡張子が合いません")
+        if self.pickCIF.get_path() is None:
+            appLogger.warning("selected file is not match suffix (.cif)")
+            raise ValueError("選択されたファイルと指定の拡張子が合いません")
+        appLogger.info("Read_CIF started -->")
+        fileData.read_cif_file(self.pickCIF.get_path())
+        appLogger.info("<-- end")
+        self.update()
+
+    def readTXT_event(self):
+        if not self.pickBuilder.check_txtf_path():
+            appLogger.warning("selected file is not match suffix (.exe)")
+            raise ValueError("選択されたファイルと指定の拡張子が合いません")
+        if not self.pickTXT.check_txtf_path():
+            appLogger.warning("selected file is not match suffix (.cif)")
+            raise ValueError("選択されたファイルと指定の拡張子が合いません")
+        appLogger.info("Read_TXT started -->")
+        fileData.read_output_file(self.pickTXT.get_path())
+        appLogger.info("<-- end")
         self.update()
 
 class Tab1_TxtF_CellData(ft.TextField):

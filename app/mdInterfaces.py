@@ -9,16 +9,45 @@ import mdEnums as en
 class Data_BtmBtnProperties():
     def __init__(self,
                 btm_btn_idx:en.BtmBtnIdx,
-                visible:bool,
-                disabled:bool,
-                text:str,
-                on_click:ft.OptionalControlEventCallable
+                visible:bool=True,
+                disabled:bool=True,
+                text:Optional[str]=None,
+                on_click:ft.OptionalControlEventCallable=None
         ):
         self.BTMBTNIDX = btm_btn_idx
         self.VISIBLE = visible
         self.DISABLED = disabled
-        self.TEXT = text
-        self.ON_CLICK = on_click
+        if text is None: newTxt = self.BTMBTNIDX.get_btn_def_text()
+        else: newTxt = text
+        self.TEXT = newTxt
+        if on_click is None: new_click = self._btmBtn_dflt_event
+        else: new_click = on_click
+        self.ON_CLICK = new_click
+    
+    def change_props(self,
+                    btn_idx:Optional[en.BtmBtnIdx]=None,
+                    visible:bool=True,
+                    disabled:bool=True,
+                    text:Optional[str]=None,
+                    on_click:ft.OptionalControlEventCallable=None,
+                ):
+        if btn_idx is None: newIdx = self.BTMBTNIDX
+        else: newIdx = btn_idx
+        if text is None: newText = self.BTMBTNIDX.get_btn_def_text()
+        else: newText = text
+        if on_click is None: new_click = self._btmBtn_dflt_event
+        else: new_click = on_click
+        self = Data_BtmBtnProperties(
+            btm_btn_idx=newIdx,
+            visible=visible,
+            disabled=disabled,
+            text=newText,
+            on_click=new_click
+        )
+
+    def _btmBtn_dflt_event(self, e:ft.ControlEvent):
+        raise ValueError("ボタンに機能が付加されていないにもかかわらずクリックできる状態です")
+
 
 class If_BottomFuncBtn(ft.FilledButton):
     def __init__(self, btm_btn_idx:en.BtmBtnIdx):
@@ -82,14 +111,15 @@ class If_FilePickerBar(ft.Row):
 
     def get_path(self) -> Optional[Path]:
         if self.pickedPath is None: return None
+        if not self._check_txtf_path(): return None
         return Path(self.pickedPath)
     
     def get_path_name(self) -> str:
         if self.pickedPath is None: return "not file picked"
         return self.pickedPath.name
     
-    def check_txtf_path(self) -> bool:
-        path = self.get_path()
+    def _check_txtf_path(self) -> bool:
+        path = self.pickedPath
         if path is None: return False
         if not path.is_file(): return False
         if path.suffix[1:] != self.pickIdx.get_fileType(): return False
@@ -138,11 +168,13 @@ class Itf_TabContainer(ft.Container):
         )
         self.tabIdx = tab_idx
         self.controls:List[ft.Control] = []
-        #self._parent: ft.Container
+        #self._mainFrame: ft.Container
         self._dictProps:Data_BtmBtnPropsDict
 
-    def set_init(self, parent:ft.Container) -> Tuple[str, ...]:
+    def set_init(self) -> Tuple[str, ...]:
         self._dictProps = self._set_btmBtn_prop()
+        #self._mainFrame = main_frame
+        self.update()
         return (
             f'{self.tabIdx.get_tab_name()} is initialized.',
         )
@@ -151,34 +183,17 @@ class Itf_TabContainer(ft.Container):
         props = Data_BtmBtnPropsDict()
         for btnLabel in en.BtmBtnIdx:
             props[btnLabel] = Data_BtmBtnProperties(
-                btm_btn_idx=btnLabel,
-                visible=True,
-                disabled=True,
-                text=btnLabel.get_btn_def_text(),
-                on_click=self._btmBtn_dflt_event
+                btm_btn_idx=btnLabel
             )
-        props[en.BtmBtnIdx.EXIT_APP] = Data_BtmBtnProperties(
-            btm_btn_idx=en.BtmBtnIdx.EXIT_APP,
-            visible=True,
+        props[en.BtmBtnIdx.EXIT_APP].change_props(
             disabled=False,
-            text=en.BtmBtnIdx.EXIT_APP.get_btn_def_text(),
             on_click=self._btmBtn_exit_event
         )
         return props
 
-    def _btmBtn_dflt_event(self, e:ft.ControlEvent):
-        #self._parent.appLogger.error("This is BtmBtn's default event.")
-        raise ValueError("ボタンに機能が付加されていないにもかかわらずクリックできる状態です")
     def _btmBtn_exit_event(self, e:ft.ControlEvent):
         self.page.window.close()
 
-    def change_self_visible(self, to_tab_idx:en.TabIdx) -> bool:
-        if self.tabIdx == to_tab_idx:
-            self.visible = True
-            return True
-        else:
-            self.visible = False
-            return False
     def get_dict_props(self) -> Data_BtmBtnPropsDict:
         return self._dictProps
 class If_LogView(ft.ListView):
@@ -221,7 +236,7 @@ class If_ViewLogHandler(Handler):
         self.terminalView.log_write(msg, record.levelname)
 
 class If_Txtf_CellData(ft.TextField):
-    def __init__(self, cell_data_label:en.CellDataLabel, label:str, hint_text:str, read_only:bool=True):
+    def __init__(self, cell_info_label:en.CellInfoLbl, label:str, hint_text:str, read_only:bool=True):
         super().__init__(
             expand=1,
             dense=True,
@@ -229,4 +244,4 @@ class If_Txtf_CellData(ft.TextField):
             hint_text=hint_text,
             read_only=read_only
         )
-        self.cellDataLbl = cell_data_label
+        self.cellDataLbl = cell_info_label

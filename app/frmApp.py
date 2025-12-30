@@ -25,8 +25,8 @@ class SettingData(Dict[en.SettingLabel, str]):
     def __init__(self):
         self.settingPath = Path('./datatext/makeci_setting.txt')
         self.appVerType = "beta"
-        self.appVerNum = "4.0"
-        self._allowVerNum = 4.0
+        self.appVerNum = "6.0"
+        self._allowVerNum = 6.0
 
         for label in en.SettingLabel:
             self[label] = "None"
@@ -81,7 +81,7 @@ class SettingData(Dict[en.SettingLabel, str]):
         with open(self.settingPath) as f:
             for lineS in f:
                 lineP = lineS.rstrip().split(sep=';')
-                if len(lineP) == 0: continue
+                if len(lineP) <= 1: continue
                 lineP[1] = ';'.join(lineP[1:])
                 for label in en.SettingLabel:
                     if label.value == lineP[0]:
@@ -108,7 +108,7 @@ class GjfData(List[str]):
 
     def read_gjf(self, gjf_path:Path) -> bool:
         self.clear()
-        appLogger.info("read_gjf")
+        appLogger.info("read_gjf -->")
         complete = True
         i = -1
         with open(gjf_path) as f:
@@ -124,6 +124,7 @@ class GjfData(List[str]):
                         if i >= 6: break
                 self.append(line)
         self.print_self()
+        appLogger.info("<-- end")
         return complete
 
     def make_def_gjf(self):
@@ -148,7 +149,10 @@ class GjfData(List[str]):
                 f.write(line.strip() + '\n')
                 if is_def and i >= 5: break
     
-    def read_mi(self, mi_path:Path):
+    def read_mi(self, mi_path:Path) -> GjfData:
+        re_gjf:GjfData
+        if len(self) >= 6: re_gjf = GjfData(self.defGjfPath)
+        else: re_gjf = self
         i = -1
         with open(mi_path) as f:
             for lineS in f:
@@ -165,8 +169,9 @@ class GjfData(List[str]):
                 for p in range(2, 5):
                     while len(lineP[p]) < 10: lineP[p] = "_" + lineP[p]
                 outline = '  '.join(lineP[1:])
-                self.append(outline.replace('_', ' '))
-        self.print_self()
+                re_gjf.append(outline.replace('_', ' '))
+        re_gjf.print_self()
+        return re_gjf
 
 class FileData_Value():
     def __init__(self, cell_info_label:en.CellInfoLbl, *values:str):
@@ -241,8 +246,9 @@ class FileData(List[FileData_Value]):
                 elif "_space_group_name_H-M_alt" in line:
                     stock = line.split("'")
                     self.append_value(en.CellInfoLbl.SPACE_G_NAME, '_'.join(stock[1].split(' ')))
-                elif ("_cell_length_" or "_cell_angle_" or "_cell_volume") in line:
+                elif "_cell_" in line:
                     stock = line.split()
+                    print(lineS)
                     for lbl in en.CellInfoLbl:
                         #stock[インデックス][文字列の何番目か]
                         if lbl.value == stock[0][1:]:
@@ -394,6 +400,10 @@ class Tab99_PlaceHoldeeeer(itf.Itf_TabContainer):
     def __init__(self):
         super().__init__(en.TabIdx.PLACE_HOLDER, True)
         self.content = ft.Placeholder(color=ft.Colors.random())
+    
+    def change_self_visible(self, to_tab_idx: en.TabIdx) -> bool:
+        self.visible = True
+        return True
 
 class Tab0_BuilderPathSelect(itf.Itf_TabContainer):
     def __init__(self):
@@ -412,12 +422,13 @@ class Tab0_BuilderPathSelect(itf.Itf_TabContainer):
         ]
         self.content = ft.Column(controls=self.controls)
 
-    def set_init(self, parent:MainAppFrame):
-        super().set_init(parent)
+    def set_init(self) -> Tuple[str, ...]:
+        log = super().set_init()
         for cont in self.controls:
             if not isinstance(cont, itf.If_FilePickerBar): continue
-            msgs = cont.set_init(filePickers[cont.pickIdx], settingData)
-            for msg in msgs: self._parent.appLogger.debug(msg)
+            msgs = cont.set_init(filePickers[cont.pickIdx], settingData[cont.pickIdx.get_setting_label()])
+            log += msgs
+        return log
 
     def _set_btmBtn_prop(self) -> itf.Data_BtmBtnPropsDict:
         props = super()._set_btmBtn_prop()
@@ -426,39 +437,40 @@ class Tab0_BuilderPathSelect(itf.Itf_TabContainer):
             visible=True,
             disabled=False,
             text="ReadCIF",
-            on_click=self._parent.btmBtn_tab0_next_event
+            on_click=self._btmBtn_dflt_event
         )
         props[en.BtmBtnIdx.OTHER_FUNC1] = itf.Data_BtmBtnProperties(
             btm_btn_idx=en.BtmBtnIdx.OTHER_FUNC1,
             visible=True,
             disabled=False,
             text="ReadTXT",
-            on_click=self._parent.btmBtn_tab0_func1_event
+            on_click=self._btmBtn_dflt_event
         )
+        props[en.BtmBtnIdx.OTHER_FUNC2].VISIBLE = False
         return props
 
     def readCIF_event(self):
         if not self.pickBuilder.check_txtf_path():
-            self._parent.appLogger.warning("selected file is not match suffix (.exe)")
+            appLogger.warning("selected file is not match suffix (.exe)")
             raise ValueError("選択されたファイルと指定の拡張子が合いません")
         if not self.pickCIF.check_txtf_path():
-            self._parent.appLogger.warning("selected file is not match suffix (.cif)")
+            appLogger.warning("selected file is not match suffix (.cif)")
             raise ValueError("選択されたファイルと指定の拡張子が合いません")
-        self._parent.appLogger.info("Read_CIF started -->")
+        appLogger.info("Read_CIF started -->")
         fileData.read_cif_file(self.pickCIF.get_path())
-        self._parent.appLogger.info("<-- end")
+        appLogger.info("<-- end")
         self.update()
 
     def readTXT_event(self):
         if not self.pickBuilder.check_txtf_path():
-            self._parent.appLogger.warning("selected file is not match suffix (.exe)")
+            appLogger.warning("selected file is not match suffix (.exe)")
             raise ValueError("選択されたファイルと指定の拡張子が合いません")
         if not self.pickTXT.check_txtf_path():
-            self._parent.appLogger.warning("selected file is not match suffix (.cif)")
+            appLogger.warning("selected file is not match suffix (.cif)")
             raise ValueError("選択されたファイルと指定の拡張子が合いません")
-        self._parent.appLogger.info("Read_TXT started -->")
+        appLogger.info("Read_TXT started -->")
         fileData.read_output_file(self.pickTXT.get_path())
-        self._parent.appLogger.info("<-- end")
+        appLogger.info("<-- end")
         self.update()
 
 class Tab1_ReadData(itf.Itf_TabContainer):
@@ -466,16 +478,16 @@ class Tab1_ReadData(itf.Itf_TabContainer):
         super().__init__(en.TabIdx.READ_DATA, False)
         #* 格子定数用
             #*個別データ
-        self.dataName = itf.If_Txtf_CellData(cell_data_label=en.CellDataLabel.FILE_NAME, label="Data_Name", hint_text="fileName", read_only=False)
-        self.spaceGItNum = itf.If_Txtf_CellData(cell_data_label=en.CellDataLabel.SPACE_GROUP_IT_NUM, label="SpaceG_IT_Num", hint_text="space_group_IT_number")
-        self.spaceGName = itf.If_Txtf_CellData(cell_data_label=en.CellDataLabel.SPACE_GROUP_NAME, label="SpaceG_Name", hint_text="space_group_name_H-M_alt")
-        self.cellLenA = itf.If_Txtf_CellData(cell_data_label=en.CellDataLabel.CELL_LENGTH, label="Cell_Length_a", hint_text="cell_length_a")
-        self.cellLenB = itf.If_Txtf_CellData(cell_data_label=en.CellDataLabel.CELL_LENGTH, label="Cell_Length_b", hint_text="cell_length_b")
-        self.cellLenC = itf.If_Txtf_CellData(cell_data_label=en.CellDataLabel.CELL_LENGTH, label="Cell_Length_c", hint_text="cell_length_c")
-        self.cellAngleA = itf.If_Txtf_CellData(cell_data_label=en.CellDataLabel.CELL_ANGLE, label="Cell_Angle_alpha", hint_text="cell_angle_alpha")
-        self.cellAngleB = itf.If_Txtf_CellData(cell_data_label=en.CellDataLabel.CELL_ANGLE, label="Cell_Angle_beta", hint_text="cell_angle_beta")
-        self.cellAngleC = itf.If_Txtf_CellData(cell_data_label=en.CellDataLabel.CELL_ANGLE, label="Cell_Angle_gamma", hint_text="cell_angle_gamma")
-        self.cellVolume = itf.If_Txtf_CellData(cell_data_label=en.CellDataLabel.CELL_VOLUME, label="Cell_Volume", hint_text="cell_volume")
+        self.dataName = itf.If_Txtf_CellData(cell_info_label=en.CellInfoLbl.DATA_NAME, label="Data_Name", hint_text="fileName", read_only=False)
+        self.spaceGItNum = itf.If_Txtf_CellData(cell_info_label=en.CellInfoLbl.SPACE_G_IT_NUM, label="SpaceG_IT_Num", hint_text="space_group_IT_number")
+        self.spaceGName = itf.If_Txtf_CellData(cell_info_label=en.CellInfoLbl.SPACE_G_NAME, label="SpaceG_Name", hint_text="space_group_name_H-M_alt")
+        self.cellLenA = itf.If_Txtf_CellData(cell_info_label=en.CellInfoLbl.CELL_LEN_A, label="Cell_Length_a", hint_text="cell_length_a")
+        self.cellLenB = itf.If_Txtf_CellData(cell_info_label=en.CellInfoLbl.CELL_LEN_B, label="Cell_Length_b", hint_text="cell_length_b")
+        self.cellLenC = itf.If_Txtf_CellData(cell_info_label=en.CellInfoLbl.CELL_LEN_C, label="Cell_Length_c", hint_text="cell_length_c")
+        self.cellAngleA = itf.If_Txtf_CellData(cell_info_label=en.CellInfoLbl.CELL_ANGLE_A, label="Cell_Angle_alpha", hint_text="cell_angle_alpha")
+        self.cellAngleB = itf.If_Txtf_CellData(cell_info_label=en.CellInfoLbl.CELL_ANGLE_B, label="Cell_Angle_beta", hint_text="cell_angle_beta")
+        self.cellAngleC = itf.If_Txtf_CellData(cell_info_label=en.CellInfoLbl.CELL_ANGLE_C, label="Cell_Angle_gamma", hint_text="cell_angle_gamma")
+        self.cellVolume = itf.If_Txtf_CellData(cell_info_label=en.CellInfoLbl.CELL_VOLUME, label="Cell_Volume", hint_text="cell_volume")
         self.txtfList:List[itf.If_Txtf_CellData] = [
             self.dataName, self.spaceGItNum, self.spaceGName,
             self.cellLenA, self.cellLenB, self.cellLenC,
@@ -537,15 +549,36 @@ class Tab1_ReadData(itf.Itf_TabContainer):
         self.saveFilePicker:ft.FilePicker
         self.outputPath:Path
 
-    def set_init(self, parent: MainAppFrame):
-        super().set_init(parent)
+    def set_init(self) -> Tuple[str, ...]:
+        log = super().set_init()
         self.dataName.on_blur = self.rename_event
         self.saveFilePicker = filePickers[en.FilePickerIdx.OUTPUT_SAVE]
         self.saveFilePicker.on_result = self.pick_files_result
+        return log
 
     def _set_btmBtn_prop(self) -> itf.Data_BtmBtnPropsDict:
         props = super()._set_btmBtn_prop()
-
+        props[en.BtmBtnIdx.NEXT_TAB] = itf.Data_BtmBtnProperties(
+            btm_btn_idx=en.BtmBtnIdx.NEXT_TAB,
+            visible=True,
+            disabled=False,
+            text="Save&Go",
+            on_click=self._btmBtn_dflt_event
+        )
+        props[en.BtmBtnIdx.OTHER_FUNC1] = itf.Data_BtmBtnProperties(
+            btm_btn_idx=en.BtmBtnIdx.OTHER_FUNC1,
+            visible=True,
+            disabled=False,
+            text="Save",
+            on_click=self._btmBtn_dflt_event
+        )
+        props[en.BtmBtnIdx.OTHER_FUNC2] = itf.Data_BtmBtnProperties(
+            btm_btn_idx=en.BtmBtnIdx.OTHER_FUNC2,
+            visible=True,
+            disabled=False,
+            text="Remove",
+            on_click=self.dataTable_row_clear_event
+        )
         return props
 
     def insert_cells(self):
@@ -559,62 +592,33 @@ class Tab1_ReadData(itf.Itf_TabContainer):
         n:int = 0
         for inList in fileData:
             i += 1
-            match inList.dataLabel.name:
+            match inList.get_label().name:
                 case 'STATE':
-                    if re.match('FileData_.*',inList[0]): continue
-                    self._parent.appLogger.error("this file_data is not true.")
+                    if re.match('FileData_.*',inList.get_value()[0]): continue
+                    appLogger.error("this file_data is not true.")
                     raise ValueError("ファイルデータが正しくありません")
-                case 'ATOM':
-                    if not re.match('[A-Z][a-z]{0,1}', inList[0]):
-                        read_row = ft.DataRow(cells=[], data=n, on_select_changed=self.row_CBox_clicked)
-                        for value in inList:
-                            read_row.cells.append(ft.DataCell(ft.Text(value=value)))
-                        while len(inList) < 7:
-                            read_row.cells.append(ft.DataCell(ft.Text("-")))
-                        self.readTable.rows.append(read_row)
-                        n += 1
-                case x:
-                    for txtf in self.txtfList:
-                        if x == txtf.cellDataLbl.name:
-                            txtf.value = inList[1]
-                            break
-                    
-            if i == 0:
-                if re.match('FileData_.*',inList[0]):
-                    continue
-                else:
-                    return
-            elif i == 400:
-                appLogger.info("list length is over(400)")
-                return
-            else:
-                atom:bool = True
-                    #* 格子の基礎データ(txtfに入力されるもの)を挿入。
-                for txtf in self.txtfList:
-                    if inList[0] == txtf.hint_text:
-                        txtf.value = inList[1]
-                        atom = False
-                    #* 原子座標をデータテーブルに入力。
-                if atom and re.match('[A-Z][a-z]{0,1}', inList[0]):
-                    read_row = ft.DataRow(cells=[],data=n,on_select_changed=self.row_CBox_clicked)
-                    for inData in inList:
-                        read_row.cells.append(ft.DataCell(ft.Text(value=inData)))
-                    if len(inList) <= 6:
+                case 'ATOMS':
+                    read_row = ft.DataRow(cells=[], data=n, on_select_changed=self.row_CBox_clicked)
+                    for value in inList.get_value():
+                        read_row.cells.append(ft.DataCell(ft.Text(value=value)))
+                    while len(inList.get_value()) < 7:
                         read_row.cells.append(ft.DataCell(ft.Text("-")))
                     self.readTable.rows.append(read_row)
                     n += 1
-                else:
-                    pass
+                case x:
+                    for txtf in self.txtfList:
+                        if x == txtf.cellDataLbl.name:
+                            txtf.value = inList.get_value()[0]
+                            break
 
     def rename_event(self, e:ft.ControlEvent):
-        if fileData.search_get_value_single(en.CellDataLabel.FILE_NAME) is None: return
-        if e.control.value is None: self.dataName.value = fileData.search_get_value_single(en.CellDataLabel.FILE_NAME)[-1]
-        if not e.control.value.strip(): self.dataName.value = fileData.search_get_value_single(en.CellDataLabel.FILE_NAME)[-1]
-        if fileData.change_file_name(e.control.value) is None: self.dataName.value = fileData.search_get_value_single(en.CellDataLabel.FILE_NAME)[-1]
+        if fileData.get_value(en.CellInfoLbl.DATA_NAME) is None: raise ValueError("ファイルデータが不正です")
+        if e.control.value is None: self.dataName.value = fileData.get_value(en.CellInfoLbl.DATA_NAME)[0]
+        if not e.control.value.strip(): self.dataName.value = fileData.get_value(en.CellInfoLbl.DATA_NAME)[0]
+        if fileData.change_file_name(e.control.value) is None: self.dataName.value = fileData.get_value(en.CellInfoLbl.DATA_NAME)[0]
         self.update()
 
     #* 行をクリックしたときに削除リストに追加したり消したりするイベント。
-    #* 実際に行を消すイベントは本体にある。
     def row_CBox_clicked(self,e:ft.ControlEvent):
         if e.control.selected:
             e.control.selected = False
@@ -632,21 +636,22 @@ class Tab1_ReadData(itf.Itf_TabContainer):
     def commit_fileData(self):
         tab1FileData:FileData = FileData()
         tab1FileData.clear()
-        tab1FileData.append_value(en.CellDataLabel.STATE, "FileData_commit")
+        tab1FileData.append_value(en.CellInfoLbl.STATE, "FileData_commit")
         for txtf in self.txtfList:
-            tab1FileData.append_value(txtf.cellDataLbl, txtf.hint_text, txtf.value)
+            tab1FileData.append_value(txtf.cellDataLbl, txtf.value)
         for row in self.readTable.rows:
-            tab1FileData.append_value(en.CellDataLabel.ATOM)
+            tab1FileData.append_value(en.CellInfoLbl.ATOMS, "init")
+            value:List[str] = list()
             for cell in row.cells:
-                if cell.content.value == "-": pass
-                else: tab1FileData[-1].append(str(cell.content.value))
-        #global fileData
+                if cell.content.value == "-": continue
+                value.append(str(cell.content.value))
+            tab1FileData[-1].change_value(value)        #global fileData
         fileData = copy.deepcopy(tab1FileData)
         fileData.save_outpuuuut_file()
 
     def pick_files_result(self, e:ft.FilePickerResultEvent):
         if e.path:
-            if re.match('.*txt',e.path):
+            if re.match('.*txt', e.path):
                 self.outputPath = Path(e.path)
             else:
                 self.outputPath = Path(e.path+".txt")
@@ -668,6 +673,17 @@ class Tab1_ReadData(itf.Itf_TabContainer):
             lastIdx = self.selectedRows.remove(delIdx)
         self.update()
 
+class Tab2_LogView(itf.Itf_TabContainer):
+    def __init__(self):
+        super().__init__(en.TabIdx.BUILDER_LOG, True)
+        self.bgcolor = ft.Colors.BLACK
+        self.logView = itf.If_LogView()
+        self.content = self.logView
+    
+    def change_self_visible(self, to_tab_idx: en.TabIdx) -> bool:
+        self.visible = True
+        return True
+
 
 class MainAppFrame(ft.Container):
     def __init__(self):
@@ -680,19 +696,19 @@ class MainAppFrame(ft.Container):
         self.right_tabBase = ft.Column(expand=3, spacing=2, controls=[])
         #右側部分の2番目の区分け
         self.cn_tabContents = ft.Stack(expand=10, controls=[])
-        self.btmBtnContents = ft.Row(expand=1, alignment=ft.MainAxisAlignment.END, controls=[])
+        self.btmBtnContents = Btm_BtnBar()
 
         #タブたち
         self.cn_tab99 = Tab99_PlaceHoldeeeer()
         self.cn_tab0 = Tab0_BuilderPathSelect()
         self.cn_tab1 = Tab1_ReadData()
-#        self.cn_tab2 = Cn_Tab2_BuilderLog()
+        self.cn_tab2 = Tab2_LogView()
 #        self.cn_tab3 = Cn_Tab3_BuilderResult()
 #        self.cn_tab4 = Cn_Tab4_MIPathSelect()
 #        self.cn_tab5 = Cn_Tab5_GJFPreview()
         self.cn_tabContents.controls = [
                 self.cn_tab99,
-                #self.cn_tab2,
+                self.cn_tab2,
                 self.cn_tab0,
                 self.cn_tab1,
                 #self.cn_tab3,
@@ -700,18 +716,8 @@ class MainAppFrame(ft.Container):
                 #self.cn_tab5,
             ]
         self.right_tabBase.controls.append(self.cn_tabContents)
-        #ボトムボタンたち
-        self.btmBtn_Next = itf.If_BottomFuncBtn(en.BtmBtnIdx.NEXT_TAB)
-        self.btmBtn_Exit = itf.If_BottomFuncBtn(en.BtmBtnIdx.EXIT_APP)
-        self.btmBtn_Func1 = itf.If_BottomFuncBtn(en.BtmBtnIdx.OTHER_FUNC1)
-        self.btmBtn_Func2 = itf.If_BottomFuncBtn(en.BtmBtnIdx.OTHER_FUNC2)
-        self.btmBtnContents.controls =[
-                self.btmBtn_Func2,
-                self.btmBtn_Func1,
-                self.btmBtn_Exit,
-                self.btmBtn_Next,
-            ]
         self.right_tabBase.controls.append(self.btmBtnContents)
+        #ボトムボタンたち
         #本体に配置
         self.content.controls = [
                 self.left_tabChangeBar,
@@ -724,12 +730,33 @@ class MainAppFrame(ft.Container):
 
         self.appLogger:logging.Logger
 
+    def set_init(self, app_logger:logging.Logger):
+        self.appLogger = app_logger
+        for tab in self.cn_tabContents.controls:
+            if not isinstance(tab, itf.Itf_TabContainer): continue
+            tab.set_init()
+            dictProps = tab.get_dict_props()
+            match tab.tabIdx.name:
+                case 'FILE_PATH_SELECT':
+                    dictProps[en.BtmBtnIdx.NEXT_TAB].ON_CLICK = self.btmBtn_tab0_next_event
+                    dictProps[en.BtmBtnIdx.OTHER_FUNC1].ON_CLICK = self.btmBtn_tab0_func1_event
+                case 'READ_DATA':
+                    dictProps[en.BtmBtnIdx.NEXT_TAB].ON_CLICK = self.btmBtn_tab1_next_event
+                    dictProps[en.BtmBtnIdx.OTHER_FUNC1].ON_CLICK = self.btmBtn_tab1_func1_event
+                case _:
+                    pass
+
+
+        self.tab_change(en.TabIdx.FILE_PATH_SELECT)
+        self.update()
+
     def tab_change(self, toTabIdx:en.TabIdx):
         self.appLogger.debug(f'tab_change -> {toTabIdx.get_tab_name()}')
         propsDict:itf.Data_BtmBtnPropsDict
         for tab in self.cn_tabContents.controls:
             if not isinstance(tab, itf.Itf_TabContainer): continue
-            if tab.change_self_visible(toTabIdx): propsDict = tab.get_dict_props()
+            tab.change_self_visible(toTabIdx)
+            if tab.tabIdx == toTabIdx: propsDict = tab.get_dict_props()
             #else: propsDict = 
         for btn in self.btmBtnContents.controls:
             if not isinstance(btn, itf.If_BottomFuncBtn): continue
@@ -744,29 +771,29 @@ class MainAppFrame(ft.Container):
     def btmBtn_tab0_next_event(self, e:ft.ControlEvent):
         self.cn_tab0.readCIF_event()
         self.tab_change(en.TabIdx.READ_DATA)
-        #!self.cn_tab1.insert_cells()
+        self.cn_tab1.insert_cells()
         self.update()
     def btmBtn_tab0_func1_event(self, e:ft.ControlEvent):
         self.cn_tab0.readTXT_event()
         self.tab_change(en.TabIdx.READ_DATA)
-        #!
+        self.cn_tab1.insert_cells()
         self.update()
     
-    def btmBtn_tab1_save_go_event(self,e):
-        if not re.match('FileData_.*', fileData[0][0]): return
+    def btmBtn_tab1_next_event(self,e):
+        if not re.match('FileData_.*', fileData.get_value(en.CellInfoLbl.STATE)[0]): return
         self.cn_tab1.commit_fileData()
         self.ciAuto.stopRun = False
         self.tab_change(en.TabIdx.BUILDER_LOG)
         self.update()
         self.ciAuto.auto_atom_info_insert(self.cn_tab0.pickBuilder.get_path(), fileData)
         self.page.window.to_front()
-        self.cn_tab3.ins_txtf_fileName()
+        #!self.cn_tab3.ins_txtf_fileName()
         self.tab_change(en.TabIdx.BUILDER_RESULT)
         self.update()
-    def btmBtn_tab1_save_event(self, e):
-        if not re.match('FileData_.*', fileData[0][0]): return
+    def btmBtn_tab1_func1_event(self, e):
+        if not re.match('FileData_.*', fileData.get_value(en.CellInfoLbl.STATE)[0]): return
         self.cn_tab1.commit_fileData()
-        self.cn_tab1.saveFilePicker.save_file(allowed_extensions=['txt'], file_name=fileData.search_get_value_single(en.CellDataLabel.FILE_NAME)[-1])
+        self.cn_tab1.saveFilePicker.save_file(allowed_extensions=['txt'], file_name=fileData.search_get_value_single(en.CellInfoLbl.FILE_NAME)[-1])
         self.update()
     
     def btmBtn_tab2_stop_event(self, e):
@@ -847,11 +874,6 @@ def main(page: ft.Page):
     for name in en.FilePickerIdx:
         filePickers[name] = ft.FilePicker()
         page.overlay.append(filePickers.get(name))
-    
-
-
-    mainAppFrame = MainAppFrame()
-
 
     def window_close_event(e):
         if e.data == "close":
@@ -860,16 +882,16 @@ def main(page: ft.Page):
     
     page.window.prevent_close = True
     page.window.on_event = window_close_event
+    mainAppFrame = MainAppFrame()
     page.add(mainAppFrame)
     page.window.center()
     #page.window.always_on_top = True
     page.update()
     
-    """
     global appLogger
     appLogger = create_app_logger(
         name="myapp",
-        terminal_view=makeCiSup.cn_tab2.logView,
+        terminal_view=mainAppFrame.cn_tab2.logView,
         log_file="./datatext/myapp.log",
         )
     appLogger.info("Application started")
@@ -883,11 +905,7 @@ def main(page: ft.Page):
     else:
         gjfData = GjfData(Path(settingData[en.SettingLabel.DEF_GJF_PATH]))
     
-    makeCiSup.cn_tab0.set_txtf_init()
-    makeCiSup.cn_tab4.set_txtf_init()
-    makeCiSup.ciAuto.set_appLogger(appLogger)
-    makeCiSup.tab_change(en.TabIdx.FILE_PATH_SELECT)
-    """
+    mainAppFrame.set_init(app_logger=appLogger)
     page.update()
     
 
