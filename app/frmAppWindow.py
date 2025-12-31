@@ -361,90 +361,6 @@ class FileData(List[FileData_Value]):
         appLogger.info(f"data_name changed to {newFileName}")
         return lastName
 
-class Tab_FilePicker_Bar(ft.Row):
-#!削除予定
-    def __init__(self, filePickerIdx:en.FilePickerIdx):
-        super().__init__(
-            spacing=0
-        )
-        self.filePickerIdx = filePickerIdx
-        self.filePickeeeer = filePickers[self.filePickerIdx]
-        self.filePickeeeer.on_result = self.filePicker_event
-        self.filePath:Optional[Path] = None
-
-        self.pathTxtf = ft.TextField(
-            expand=9,
-            dense=True,
-            hint_text=self.filePickerIdx.value,
-            on_blur=self.txtf_onBlur_event)
-        self.controls = [
-            self.pathTxtf,
-            ft.FilledButton(
-                expand=1,
-                text="File",
-                on_click=lambda _: self.filePickeeeer.pick_files(allowed_extensions=[self.filePickerIdx.get_fileType()])
-            )
-        ]
-        #self.set_init()
-
-    def set_init(self):
-        label = self.filePickerIdx.get_setting_label()
-        if label is None: return
-        if settingData[label] == "None": return
-        self.path_change(settingData[label])
-
-    def get_path(self)->Optional[Path]:
-        if self.filePath is None: return None
-        return Path(self.filePath)
-
-    def path_change(self, changedStr:Optional[str]):
-        if changedStr is None:
-            self.pathTxtf.value = ""
-            self.filePath = None
-        else:
-            self.pathTxtf.value = changedStr.replace(os.sep, '/').strip('"')
-        value = Path(self.pathTxtf.value)
-        self.filePath = value
-        settingLabel = self.filePickerIdx.get_setting_label()
-        global settingData
-        if Path.is_file(value):
-            self.pathTxtf.error_text = None
-            if not settingLabel is None:
-                settingData[settingLabel] = str(value)
-            appLogger.info(f"Selected files:name={value.name}")
-            appLogger.info(f"Selected files:{value.resolve()}")
-        else:
-            self.filePath = None
-            self.pathTxtf.error_text = "is not true path"
-            if not settingLabel is None:
-                settingData[settingLabel] = "None"
-            appLogger.info("is not filePath")
-
-    def txtf_onBlur_event(self, e:ft.ControlEvent):
-        self.path_change(e.control.value)
-        self.update()
-    def filePicker_event(self,e: ft.FilePickerResultEvent):
-        if e.files:
-            self.path_change(e.files[0].path)
-        self.update()
-    def check_true_path(self)->bool:
-        if not Path.exists(self.filePath): return False
-        if self.filePath.name == "": return False
-        return True
-
-#* タブのコンテナ。
-class Cn_TabContainer(ft.Container):
-#! itfに機能移行
-    def __init__(self, tabIdx:en.TabIdx, defVisible:bool):
-        super().__init__(
-            expand=True,
-            padding=10,
-            bgcolor=ft.Colors.GREY_50,
-            border=ft.border.all(1, ft.Colors.random()),
-            visible=defVisible
-        )
-        self.tabIdx = tabIdx
-
 class Cn_Tab99_PlaceHoldeeeer(itf.Itf_TabContainer):
     def __init__(self):
         super().__init__(tab_idx=en.TabIdx.PLACE_HOLDER, dflt_visible=True)
@@ -476,6 +392,21 @@ class Cn_Tab0_FilePathSelect(itf.Itf_TabContainer):
                 path_from_setting=settingData[cont.pickIdx.get_setting_label()]
             )
         return log
+    
+    def _set_btmBtn_prop(self) -> itf.Data_BtmBtnPropsDict:
+        props = super()._set_btmBtn_prop()
+        props[en.BtmBtnIdx.NEXT_TAB].change_props(
+            disabled=False,
+            text="ReadCIF",
+        )
+        props[en.BtmBtnIdx.OTHER_FUNC1].change_props(
+            disabled=False,
+            text="ReadTXT"
+        )
+        props[en.BtmBtnIdx.OTHER_FUNC2].change_props(
+            visible=False
+        )
+        return props
 
     def readCIF_event(self):
         if self.pickBuilder.get_path() is None:
@@ -490,10 +421,10 @@ class Cn_Tab0_FilePathSelect(itf.Itf_TabContainer):
         self.update()
 
     def readTXT_event(self):
-        if not self.pickBuilder.check_txtf_path():
+        if self.pickBuilder.get_path() is None:
             appLogger.warning("selected file is not match suffix (.exe)")
             raise ValueError("選択されたファイルと指定の拡張子が合いません")
-        if not self.pickTXT.check_txtf_path():
+        if self.pickTXT.get_path() is None:
             appLogger.warning("selected file is not match suffix (.cif)")
             raise ValueError("選択されたファイルと指定の拡張子が合いません")
         appLogger.info("Read_TXT started -->")
@@ -501,35 +432,22 @@ class Cn_Tab0_FilePathSelect(itf.Itf_TabContainer):
         appLogger.info("<-- end")
         self.update()
 
-class Tab1_TxtF_CellData(ft.TextField):
-    def __init__(self, cell_data_label:en.CellDataLabel, label:str, hint_text:str, read_only:bool=True):
-        super().__init__(
-            expand=1,
-            dense=True,
-            label=label,
-            hint_text=hint_text,
-            read_only=read_only
-        )
-        self.cellDataLbl = cell_data_label
-
-class Cn_Tab1_ReadData(Cn_TabContainer):
+class Cn_Tab1_ReadData(itf.Itf_TabContainer):
     def __init__(self):
-        super().__init__(tabIdx=en.TabIdx.READ_DATA, defVisible=False)
-
+        super().__init__(tab_idx=en.TabIdx.READ_DATA, dflt_visible=False)
         #* 格子定数用
             #*個別データ
-        self.dataName = Tab1_TxtF_CellData(cell_data_label=en.CellDataLabel.FILE_NAME, label="Data_Name", hint_text="fileName", read_only=False)
-        self.dataName.on_blur = self.rename_event
-        self.spaceGItNum = Tab1_TxtF_CellData(cell_data_label=en.CellDataLabel.SPACE_GROUP_IT_NUM, label="SpaceG_IT_Num", hint_text="space_group_IT_number")
-        self.spaceGName = Tab1_TxtF_CellData(cell_data_label=en.CellDataLabel.SPACE_GROUP_NAME, label="SpaceG_Name", hint_text="space_group_name_H-M_alt")
-        self.cellLenA = Tab1_TxtF_CellData(cell_data_label=en.CellDataLabel.CELL_LENGTH, label="Cell_Length_a", hint_text="cell_length_a")
-        self.cellLenB = Tab1_TxtF_CellData(cell_data_label=en.CellDataLabel.CELL_LENGTH, label="Cell_Length_b", hint_text="cell_length_b")
-        self.cellLenC = Tab1_TxtF_CellData(cell_data_label=en.CellDataLabel.CELL_LENGTH, label="Cell_Length_c", hint_text="cell_length_c")
-        self.cellAngleA = Tab1_TxtF_CellData(cell_data_label=en.CellDataLabel.CELL_ANGLE, label="Cell_Angle_alpha", hint_text="cell_angle_alpha")
-        self.cellAngleB = Tab1_TxtF_CellData(cell_data_label=en.CellDataLabel.CELL_ANGLE, label="Cell_Angle_beta", hint_text="cell_angle_beta")
-        self.cellAngleC = Tab1_TxtF_CellData(cell_data_label=en.CellDataLabel.CELL_ANGLE, label="Cell_Angle_gamma", hint_text="cell_angle_gamma")
-        self.cellVolume = Tab1_TxtF_CellData(cell_data_label=en.CellDataLabel.CELL_VOLUME, label="Cell_Volume", hint_text="cell_volume")
-        self.txtfList:List[Tab1_TxtF_CellData] = [
+        self.dataName = itf.If_Txtf_CellData(cell_info_label=en.CellInfoLbl.DATA_NAME, label="Data_Name", hint_text="fileName", read_only=False)
+        self.spaceGItNum = itf.If_Txtf_CellData(cell_info_label=en.CellInfoLbl.SPACE_G_IT_NUM, label="SpaceG_IT_Num", hint_text="space_group_IT_number")
+        self.spaceGName = itf.If_Txtf_CellData(cell_info_label=en.CellInfoLbl.SPACE_G_NAME, label="SpaceG_Name", hint_text="space_group_name_H-M_alt")
+        self.cellLenA = itf.If_Txtf_CellData(cell_info_label=en.CellInfoLbl.CELL_LEN_A, label="Cell_Length_a", hint_text="cell_length_a")
+        self.cellLenB = itf.If_Txtf_CellData(cell_info_label=en.CellInfoLbl.CELL_LEN_B, label="Cell_Length_b", hint_text="cell_length_b")
+        self.cellLenC = itf.If_Txtf_CellData(cell_info_label=en.CellInfoLbl.CELL_LEN_C, label="Cell_Length_c", hint_text="cell_length_c")
+        self.cellAngleA = itf.If_Txtf_CellData(cell_info_label=en.CellInfoLbl.CELL_ANGLE_A, label="Cell_Angle_alpha", hint_text="cell_angle_alpha")
+        self.cellAngleB = itf.If_Txtf_CellData(cell_info_label=en.CellInfoLbl.CELL_ANGLE_B, label="Cell_Angle_beta", hint_text="cell_angle_beta")
+        self.cellAngleC = itf.If_Txtf_CellData(cell_info_label=en.CellInfoLbl.CELL_ANGLE_C, label="Cell_Angle_gamma", hint_text="cell_angle_gamma")
+        self.cellVolume = itf.If_Txtf_CellData(cell_info_label=en.CellInfoLbl.CELL_VOLUME, label="Cell_Volume", hint_text="cell_volume")
+        self.txtfList:List[itf.If_Txtf_CellData] = [
             self.dataName, self.spaceGItNum, self.spaceGName,
             self.cellLenA, self.cellLenB, self.cellLenC,
             self.cellAngleA, self.cellAngleB, self.cellAngleC,
@@ -587,58 +505,71 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
         )
 
         #* 保存機能用ファイルピッカー関連
+        self.saveFilePicker:ft.FilePicker
+        self.outputPath:Path
+
+    def set_init(self) -> Tuple[str, ...]:
+        log = super().set_init()
+        self.dataName.on_blur = self.rename_event
         self.saveFilePicker = filePickers[en.FilePickerIdx.OUTPUT_SAVE]
         self.saveFilePicker.on_result = self.pick_files_result
-        self.outputPath:Path
+        return log
+    
+    def _set_btmBtn_prop(self) -> itf.Data_BtmBtnPropsDict:
+        props = super()._set_btmBtn_prop()
+        props[en.BtmBtnIdx.NEXT_TAB].change_props(
+            disabled=False,
+            text="Save&Go"
+        )
+        props[en.BtmBtnIdx.OTHER_FUNC1].change_props(
+            disabled=False,
+            text="Save",
+        )
+        props[en.BtmBtnIdx.OTHER_FUNC2].change_props(
+            disabled=False,
+            text="Remove",
+            on_click=self.dataTable_row_clear_event
+        )
+        return props
 
     def insert_cells(self):
         # txtf_idx -> 0:fileName, 1:SpaceGITNum, 2:SpaceGName,
         # 3:CellLen_a, 4:CellLen_b, 5:CellLen_c,
         # 6:CellAngle_a, 7:CellAngle_b, 8:CellAngle_c, 9:CellVolume
         #* read_row -> data = インデックス番号
-        if self.readTable.rows is None: return
-        self.readTable.rows.clear()
+        self.readTable.rows = list()
         read_row:ft.DataRow
         i:int = -1
         n:int = 0
         for inList in fileData:
             i += 1
-            if i == 0:
-                if re.match('FileData_.*',inList[0]):
-                    continue
-                else:
-                    return
-            elif i == 400:
-                appLogger.info("list length is over(400)")
-                return
-            else:
-                atom:bool = True
-                    #* 格子の基礎データ(txtfに入力されるもの)を挿入。
-                for txtf in self.txtfList:
-                    if inList[0] == txtf.hint_text:
-                        txtf.value = inList[1]
-                        atom = False
-                    #* 原子座標をデータテーブルに入力。
-                if atom and re.match('[A-Z][a-z]{0,1}', inList[0]):
-                    read_row = ft.DataRow(cells=[],data=n,on_select_changed=self.row_CBox_clicked)
-                    for inData in inList:
-                        read_row.cells.append(ft.DataCell(ft.Text(value=inData)))
-                    if len(inList) <= 6:
+            match inList.get_label().name:
+                case 'STATE':
+                    if re.match('FileData_.*',inList.get_value()[0]): continue
+                    appLogger.error("this file_data is not true.")
+                    raise ValueError("ファイルデータが正しくありません")
+                case 'ATOMS':
+                    read_row = ft.DataRow(cells=[], data=n, on_select_changed=self.row_CBox_clicked)
+                    for value in inList.get_value():
+                        read_row.cells.append(ft.DataCell(ft.Text(value=value)))
+                    while len(inList.get_value()) <= 6:
                         read_row.cells.append(ft.DataCell(ft.Text("-")))
                     self.readTable.rows.append(read_row)
                     n += 1
-                else:
-                    pass
+                case x:
+                    for txtf in self.txtfList:
+                        if x == txtf.cellDataLbl.name:
+                            txtf.value = inList.get_value()[0]
+                            break
 
     def rename_event(self, e:ft.ControlEvent):
-        if fileData.search_get_value_single(en.CellDataLabel.FILE_NAME) is None: return
-        if e.control.value is None: self.dataName.value = fileData.search_get_value_single(en.CellDataLabel.FILE_NAME)[-1]
-        if not e.control.value.strip(): self.dataName.value = fileData.search_get_value_single(en.CellDataLabel.FILE_NAME)[-1]
-        if fileData.change_file_name(e.control.value) is None: self.dataName.value = fileData.search_get_value_single(en.CellDataLabel.FILE_NAME)[-1]
+        #if fileData.get_value_value(en.CellInfoLbl.DATA_NAME)[0] == "None": raise ValueError("ファイルデータが不正です")
+        if e.control.value is None: self.dataName.value = fileData.get_value_value(en.CellInfoLbl.DATA_NAME)[0]
+        if not e.control.value.strip(): self.dataName.value = fileData.get_value_value(en.CellInfoLbl.DATA_NAME)[0]
+        if fileData.change_file_name(e.control.value) is None: self.dataName.value = fileData.get_value_value(en.CellInfoLbl.DATA_NAME)[0]
         self.update()
 
     #* 行をクリックしたときに削除リストに追加したり消したりするイベント。
-    #* 実際に行を消すイベントは本体にある。
     def row_CBox_clicked(self,e:ft.ControlEvent):
         if e.control.selected:
             e.control.selected = False
@@ -656,15 +587,19 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
     def commit_fileData(self):
         tab1FileData:FileData = FileData()
         tab1FileData.clear()
-        tab1FileData.append_value(en.CellDataLabel.STATE, "FileData_commit")
+        tab1FileData.append_value(en.CellInfoLbl.STATE, ("FileData_commit",))
         for txtf in self.txtfList:
-            tab1FileData.append_value(txtf.cellDataLbl, txtf.hint_text, txtf.value)
+            tab1FileData.append_value(txtf.cellDataLbl, (txtf.value,))
+        if self.readTable.rows is None: raise ValueError("原子座標のデータが存在しません")
         for row in self.readTable.rows:
-            tab1FileData.append_value(en.CellDataLabel.ATOM)
+            tab1FileData.append_value(en.CellInfoLbl.ATOMS, ("init",))
+            value:List[str] = list()
             for cell in row.cells:
-                if cell.content.value == "-": pass
-                else: tab1FileData[-1].append(str(cell.content.value))
-        #global fileData
+                #? isinstanceで型チェックでエラー消せる？
+                if cell.content.value == "-": continue
+                else: value.append(str(cell.content.value))
+            tab1FileData[-1].change_value(tuple(value))
+        global fileData
         fileData = copy.deepcopy(tab1FileData)
         fileData.save_outpuuuut_file()
 
@@ -679,7 +614,7 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
             fileData.save_output_file(self.outputPath)
         self.update()
 
-    def dataTable_row_clear_event(self, e):
+    def dataTable_row_clear_event(self, e:ft.ControlEvent):
         if self.readTable.rows is None: return
         if len(self.readTable.rows) == 0: return
         for delIdx in self.selectedRows:
@@ -692,62 +627,38 @@ class Cn_Tab1_ReadData(Cn_TabContainer):
             lastIdx = self.selectedRows.remove(delIdx)
         self.update()
 
-class Tab2_LogView(ft.ListView):
+class Cn_Tab2_BuilderLog(itf.Itf_TabContainer):
     def __init__(self):
-        super().__init__(
-            expand=True,
-            auto_scroll=True,
-            spacing=0
-        )
-    
-    def log_write(self, message:str, level: str):
-        #appLogger.info(message)
-        if not message.strip(): return
-
-        color_map = {
-            "DEBUG": ft.Colors.GREY,
-            "INFO": ft.Colors.GREY_300,
-            "WARNING": ft.Colors.YELLOW,
-            "ERROR": ft.Colors.RED,
-            "CRITICAL": ft.Colors.RED_400
-        }
-
-        self.controls.append(
-            ft.Text(
-                value=message.rstrip(),
-                font_family='Consolas',
-                size=13,
-                color=color_map.get(level, ft.Colors.BLUE_50),
-            )
-        )
-        self.update()
-
-class TabLogHandler(logging.Handler):
-    def __init__(self, terminal_view:Tab2_LogView):
-        super().__init__()
-        self.terminalView = terminal_view
-
-    def emit(self, record: logging.LogRecord):
-        msg = self.format(record)
-        self.terminalView.log_write(msg, record.levelname)
-    
-
-class Cn_Tab2_BuilderLog(Cn_TabContainer):
-    def __init__(self):
-        super().__init__(tabIdx=en.TabIdx.BUILDER_LOG, defVisible=True)
+        super().__init__(tab_idx=en.TabIdx.BUILDER_LOG, dflt_visible=True)
         self.bgcolor = ft.Colors.BLACK
-        #self.margin = 10
-        self.logView = Tab2_LogView()
+        self.logView = itf.If_LogView()
         self.content = self.logView
 
-class Cn_Tab3_BuilderResult(Cn_TabContainer):
+    def _set_btmBtn_prop(self) -> itf.Data_BtmBtnPropsDict:
+        props = super()._set_btmBtn_prop()
+        props[en.BtmBtnIdx.NEXT_TAB].change_props(
+            disabled=False,
+            text="Stop",
+        )
+        props[en.BtmBtnIdx.EXIT_APP].change_props(
+            disabled=True,
+        )
+        props[en.BtmBtnIdx.OTHER_FUNC1].change_props(
+            visible=False,
+        )
+        props[en.BtmBtnIdx.OTHER_FUNC2].change_props(
+            visible=False,
+        )
+        return props
+
+class Cn_Tab3_BuilderResult(itf.Itf_TabContainer):
     def __init__(self):
-        super().__init__(tabIdx=en.TabIdx.BUILDER_RESULT, defVisible=False)
+        super().__init__(tab_idx=en.TabIdx.BUILDER_RESULT, dflt_visible=False)
         self.txtf_sort = ft.TextField(dense=True, read_only=True, max_lines=3)
         self.txtf_fileName = ft.TextField(dense=True, read_only=True, max_lines=3)
         self.txtf_runtime = ft.TextField(dense=True, read_only=True)
-        self.ins_txtf_sort(OUTPUUUUT_PATH)
-        self.control:List[ft.Control] = [
+        #!self.ins_txtf_sort(OUTPUUUUT_PATH)
+        self.controls = [
             ft.Text("Run_file_name"),
             self.txtf_fileName,
             ft.Text("Sort_file path"),
@@ -758,42 +669,52 @@ class Cn_Tab3_BuilderResult(Cn_TabContainer):
         
         self.content = ft.Column(
             expand=True,
-            controls=self.control
+            controls=self.controls
         )
 
+    def set_init(self) -> Tuple[str, ...]:
+        log = super().set_init()
+        return log
+    
+    def _set_btmBtn_prop(self) -> itf.Data_BtmBtnPropsDict:
+        props = super()._set_btmBtn_prop()
+        props[en.BtmBtnIdx.OTHER_FUNC1].change_props(
+            visible=False,
+        )
+        props[en.BtmBtnIdx.OTHER_FUNC2].change_props(
+            visible=False,
+        )
+        return props
+
     def ins_txtf_fileName(self):
-        fileName = fileData.search_get_value_single(en.CellDataLabel.FILE_NAME)
-        if fileName is None:
-            self.txtf_fileName.value = None
-            return
-        self.txtf_fileName.value = fileName[-1]
-
+        self.txtf_fileName.value = None
+        fileName = fileData.get_value_value(en.CellInfoLbl.DATA_NAME)[0]
+        if fileName == "None": pass
+        else: self.txtf_fileName.value = fileName
     
-    def ins_txtf_sort(self, sort_path:Path):
-        path = Path(sort_path)
-        if sort_path == OUTPUUUUT_PATH:
-            path = path.resolve()
-        self.txtf_sort.value = str(path)
-    
-    def clear_txtf(self):
-        for cont in self.control:
-            if not isinstance(cont, ft.TextField): continue
-            cont.value = None
+    def ins_txtf_out(self, out_path:Path):
+        self.txtf_sort.value = None
+        path = Path(out_path)
+        if not path.is_file(): raise ValueError("引数が不正です")
+        if path.suffix[1:] != 'txt': raise ValueError("拡張子が合いません")
+        self.txtf_sort.value = str(path.resolve())
 
-class Cn_Tab4_MIPathSelect(Cn_TabContainer):
-    class PickGJF(Tab_FilePicker_Bar):
+
+class Cn_Tab4_MIPathSelect(itf.Itf_TabContainer):
+    class PickGJF(itf.If_FilePickerBar):
         def __init__(self, tab4:Cn_Tab4_MIPathSelect):
             super().__init__(en.FilePickerIdx.GJF_PICK)
             self.tab4 = tab4
 
-        def path_change(self, changedStr:Optional[str]):
-            super().path_change(changedStr)
+        def path_change(self, new_path_str: Optional[str]=None) -> Tuple[str, ...]:
+            log = super().path_change(new_path_str)
             gjfData.read_gjf(self.get_path())
             self.tab4.ins_gjf_view()
+            return log
 
     def __init__(self):
-        super().__init__(en.TabIdx.MI_PATH_SELECT, False)
-        self.pickMI = Tab_FilePicker_Bar(en.FilePickerIdx.MI_PICK)
+        super().__init__(tab_idx=en.TabIdx.MI_PATH_SELECT, dflt_visible=False)
+        self.pickMI = itf.If_FilePickerBar(en.FilePickerIdx.MI_PICK)
         self.pickGJF = self.PickGJF(self)
         self.viewDefGJF = ft.ListView(
             expand=True,
@@ -811,7 +732,7 @@ class Cn_Tab4_MIPathSelect(Cn_TabContainer):
         
 
 
-        self.control:List[ft.Control] = [
+        self.controls = [
             ft.Text("MI Path"),
             self.pickMI,
             ft.Text("Default GJF Path"),
@@ -819,18 +740,21 @@ class Cn_Tab4_MIPathSelect(Cn_TabContainer):
             self.cont_viewBase,
         ]
 
-        self.content = ft.Column(expand=True, controls=self.control)
+        self.content = ft.Column(expand=True, controls=self.controls)
 
-    def set_txtf_init(self):
-        for cont in self.control:
-            if not isinstance(cont, Tab_FilePicker_Bar): continue
-            cont.set_init()
-            if settingData[en.SettingLabel.DEF_GJF_PATH] == "None":
-                self.pickGJF.path_change(str(gjfData.defGjfPath.resolve()))
-        self.update()
+    def set_init(self) -> Tuple[str, ...]:
+        log = super().set_init()
+        for cont in self.controls:
+            if not isinstance(cont, itf.If_FilePickerBar): continue
+            log += cont.set_init(
+                file_picker=filePickers[cont.pickIdx],
+                path_from_setting=settingData[cont.pickIdx.get_setting_label()]
+            )
+        return log
+
 
     def ins_gjf_view(self):
-        self.viewDefGJF.controls.clear()
+        self.viewDefGJF.controls = list()
         for line in gjfData:
             self.viewDefGJF.controls.append(
                 ft.TextField(
@@ -842,9 +766,9 @@ class Cn_Tab4_MIPathSelect(Cn_TabContainer):
             )
         self.update()
 
-class Cn_Tab5_GJFPreview(Cn_TabContainer):
+class Cn_Tab5_GJFPreview(itf.Itf_TabContainer):
     def __init__(self):
-        super().__init__(en.TabIdx.MI_PREVIEW, False)
+        super().__init__(tab_idx=en.TabIdx.MI_PREVIEW, dflt_visible=False)
         self.bgcolor = ft.Colors.LIGHT_BLUE_50
         self.viewGjf = ft.ListView(
             expand=True,
@@ -854,9 +778,14 @@ class Cn_Tab5_GJFPreview(Cn_TabContainer):
         )
         self.content = self.viewGjf
 
+        self.savePicker_gjf:ft.FilePicker
+
+    def set_init(self) -> Tuple[str, ...]:
+        log = super().set_init()
         self.savePicker_gjf = filePickers[en.FilePickerIdx.GJF_SAVE]
         self.savePicker_gjf.on_result = self.pick_files_result
-    
+        return log
+
     def ins_view_gjf(self):
         self.viewGjf.controls.clear()
         for line in gjfData:
@@ -871,7 +800,7 @@ class Cn_Tab5_GJFPreview(Cn_TabContainer):
 
     def pick_files_result(self, e:ft.FilePickerResultEvent):
         if e.path:
-            if re.match('.*gjf',e.path):
+            if re.match('.*gjf', e.path):
                 gjfPath = Path(e.path)
             else:
                 gjfPath = Path(e.path+".gjf")
@@ -884,23 +813,21 @@ class Btm_BtnBar(ft.Row):
         super().__init__(
             expand=1,
             alignment=ft.MainAxisAlignment.END,
-            controls=self._add_btn()
+            controls=[],
         )
+        for idx in en.BtmBtnIdx:
+            self.controls.append(itf.If_BottomFuncBtn(idx))
 
-    def _add_btn(self) -> List[bb.If_BottomFuncBtn]:
-        controls:List[bb.If_BottomFuncBtn] = []
-        for btnIdx in en.BtmBtnIdx:
-            controls.append(bb.If_BottomFuncBtn(btnIdx))
-        return controls
+    def set_init(self):
+        pass
     
-    def change_btn_properties(self, *dict_properties:bb.Dict_BtmBtnProperties):
-        for prop in dict_properties:
+    def change_btn_properties(self, dict_properties:itf.Data_BtmBtnPropsDict):
+        for prop in dict_properties.values():
             for btn in self.controls:
-                if not isinstance(btn, bb.If_BottomFuncBtn): continue
-                if btn.btmBtnIdx == prop.BTMBTNIDX:
-                    msgs = btn.change_property(prop)
-                    for msg in msgs: appLogger.debug(msg)
-                    break
+                if not isinstance(btn, itf.If_BottomFuncBtn): continue
+                log = btn.change_property(prop)
+                for msg in log: appLogger.debug(msg)
+                break
 class MakeCiSupApp(ft.Container):
     def __init__(self):
         super().__init__(
@@ -912,7 +839,7 @@ class MakeCiSupApp(ft.Container):
         self.right_tabBase = ft.Column(expand=3, spacing=2, controls=[])
         #右側部分の2番目の区分け
         self.cn_tabContents = ft.Stack(expand=10, controls=[])
-        self.btmBtnContents = ft.Row(expand=1, alignment=ft.MainAxisAlignment.END, controls=[])
+        self.btmBtnContents = Btm_BtnBar()
 
         #タブたち
         self.cn_tab99 = Cn_Tab99_PlaceHoldeeeer()
@@ -933,41 +860,43 @@ class MakeCiSupApp(ft.Container):
             ]
         self.right_tabBase.controls.append(self.cn_tabContents)
         #ボトムボタンたち
-        self.btmBtn_Next = bb.BtmBtn_Next(self.btmBtn_def_event)
-        self.btmBtn_Exit = bb.BtmBtn_EXit(self.btmBtn_exit_event)
-        self.btmBtn_Func1 = bb.BtmBtn_Func1(self.btmBtn_def_event)
-        self.btmBtn_Func2 = bb.BtmBtn_Func2(self.btmBtn_def_event)
-        self.btmBtnContents.controls =[
-                self.btmBtn_Func2,
-                self.btmBtn_Func1,
-                self.btmBtn_Exit,
-                self.btmBtn_Next,
-            ]
         self.right_tabBase.controls.append(self.btmBtnContents)
         #本体に配置
         self.content.controls = [
                 self.left_tabChangeBar,
                 self.right_tabBase
             ]
-        #self.tab_change(en.TabIdx.FILE_PATH_SELECT)
 
         #pywinautoを宣言してる自動化用クラスを実装
+        self.ciAuto:ar.Ci_AutoRun
+
+    def set_init(self):
+        for tab in self.cn_tabContents.controls:
+            if not isinstance(tab, itf.Itf_TabContainer): continue
+            log = tab.set_init()
+            for msg in log: appLogger.info(msg=msg)
+            tab.update()
+        self._set_btmBtn_func()
         self.ciAuto = ar.Ci_AutoRun()
+        self.tab_change(en.TabIdx.FILE_PATH_SELECT)
+        self.update()
 
     def tab_change(self, toTabIdx:en.TabIdx):
         appLogger.debug(f'tab_change -> {toTabIdx.get_tab_name()}')
+        props = self.cn_tab99.get_dict_props()
         for tab in self.cn_tabContents.controls:
-            if not isinstance(tab, Cn_TabContainer): continue
-            if tab.tabIdx == toTabIdx: tab.visible = True
+            if not isinstance(tab, itf.Itf_TabContainer): continue
+            if tab.tabIdx == toTabIdx:
+                tab.visible = True
+                props = tab.get_dict_props()
             elif tab.tabIdx == 99: pass
             elif tab.tabIdx == 2: pass
             else: tab.visible = False
-        self._btmBtn_func_change(toTabIdx)
-        for btn in self.btmBtnContents.controls:
-            if not isinstance(btn, bb.Btm_TabFuncBtn): continue
-            msgs = btn.change_property(toTabIdx)
-            for msg in msgs: appLogger.debug(msg)
+        self.btmBtnContents.change_btn_properties(props)
+        self.update()
 
+    def _set_btmBtn_func(self):
+        pass
     def _btmBtn_func_change(self, toTabIdx:en.TabIdx):
         match toTabIdx.name:
             case 'FILE_PATH_SELECT':

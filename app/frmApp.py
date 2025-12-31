@@ -598,10 +598,11 @@ class Tab1_ReadData(itf.Itf_TabContainer):
                     appLogger.error("this file_data is not true.")
                     raise ValueError("ファイルデータが正しくありません")
                 case 'ATOMS':
+                    print("atoms")
                     read_row = ft.DataRow(cells=[], data=n, on_select_changed=self.row_CBox_clicked)
                     for value in inList.get_value():
                         read_row.cells.append(ft.DataCell(ft.Text(value=value)))
-                    while len(inList.get_value()) < 7:
+                    while len(inList.get_value()) <= 6:
                         read_row.cells.append(ft.DataCell(ft.Text("-")))
                     self.readTable.rows.append(read_row)
                     n += 1
