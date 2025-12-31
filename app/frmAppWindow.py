@@ -29,6 +29,7 @@ class SettingData(Dict[en.SettingLabel, str]):
         self._allowVerNum = 6.0
 
         for label in en.SettingLabel:
+            if label.name == 'OTHER': continue
             self[label] = "None"
 
         if self.settingPath.is_file():
@@ -341,7 +342,7 @@ class FileData(List[FileData_Value]):
         if not outputPath.parent.exists(): raise ValueError("ディレクトリが存在しません")
         if not outputPath.is_file(): outputPath.touch()
         state = self.get_value_value(en.CellInfoLbl.STATE)
-        if state[0] is "None": raise ValueError("ファイルデータが正しくありません")
+        if state[0] == "None": raise ValueError("ファイルデータが正しくありません")
         if not re.match('FileData_.*', state[0]): raise ValueError("ファイルデータが出力可能ではありません")
         with open(outputPath, mode='w') as f:
             f.write("MakeCi_output"+'\n')
@@ -795,6 +796,16 @@ class Cn_Tab5_GJFPreview(itf.Itf_TabContainer):
         self.savePicker_gjf = filePickers[en.FilePickerIdx.GJF_SAVE]
         self.savePicker_gjf.on_result = self.pick_files_result
         return log
+    
+    def _set_btmBtn_prop(self) -> itf.Data_BtmBtnPropsDict:
+        props = super()._set_btmBtn_prop()
+        props[en.BtmBtnIdx.OTHER_FUNC1].change_props(
+            disabled=False,
+            text="Save"
+        )
+        props[en.BtmBtnIdx.OTHER_FUNC2].change_props(
+            visible=False
+        )
 
     def ins_view_gjf(self):
         self.viewGjf.controls.clear()
@@ -838,7 +849,7 @@ class Btm_BtnBar(ft.Row):
                 log = btn.change_property(prop)
                 for msg in log: appLogger.debug(msg)
                 break
-class MakeCiSupApp(ft.Container):
+class MainFrame(ft.Container):
     def __init__(self):
         super().__init__(
             expand=True,
@@ -919,28 +930,11 @@ class MakeCiSupApp(ft.Container):
                     props[en.BtmBtnIdx.NEXT_TAB].change_prop_click(self.event_tab1_next_save_go)
                 case 'BUILDER_LOG':
                     props[en.BtmBtnIdx.NEXT_TAB].change_prop_click(self.event_tab2_next_stop)
+                case 'MI_PREVIEW':
+                    props[en.BtmBtnIdx.OTHER_FUNC1].change_prop_click(self.event_tab5_func1_saveGJF)
                 case _:
                     pass
         self.update()
-    def _btmBtn_func_change(self, toTabIdx:en.TabIdx):
-        match toTabIdx.name:
-            case 'FILE_PATH_SELECT':
-                self.btmBtn_Next.on_click = self.btmBtn_tab0_readCIF_event
-                self.btmBtn_Func1.on_click = self.btmBtn_tab0_readTXT_event
-            case 'READ_DATA':
-                self.btmBtn_Next.on_click = self.btmBtn_tab1_save_go_event
-                self.btmBtn_Func1.on_click = self.btmBtn_tab1_save_event
-                self.btmBtn_Func2.on_click = self.cn_tab1.dataTable_row_clear_event
-            case 'BUILDER_LOG':
-                self.btmBtn_Next.on_click = self.btmBtn_tab2_stop_event
-            case 'MI_PATH_SELECT':
-                self.btmBtn_Next.on_click = self.btmBtn_tab4_preview_event
-            case 'MI_PREVIEW':
-                self.btmBtn_Func1.on_click = self.btmBtn_tab5_saveGJF_event
-            case _:
-                self.btmBtn_Next.on_click = self.btmBtn_def_event
-                self.btmBtn_Func1.on_click = self.btmBtn_def_event
-                self.btmBtn_Func2.on_click = self.btmBtn_def_event
 
     def left_btn_event(self, e:ft.ControlEvent):
         if not isinstance(e.control, tcb.Left_TabBtn): raise TypeError("タブ変更用のボタンではありません")
@@ -996,7 +990,7 @@ class MakeCiSupApp(ft.Container):
         self.tab_change(en.TabIdx.MI_PREVIEW)
         self.update()
     
-    def btmBtn_tab5_saveGJF_event(self, e:ft.ControlEvent):
+    def event_tab5_func1_saveGJF(self, e:ft.ControlEvent):
         if len(self.cn_tab5.viewGjf.controls) < 5: return
         self.cn_tab5.savePicker_gjf.save_file(
             allowed_extensions=['gjf'],
@@ -1022,7 +1016,7 @@ class ExitConfirmDialog(ft.AlertDialog):
         self.page.window.destroy()
 
 def create_app_logger(
-        name:str, terminal_view:Tab2_LogView, log_file:str="app.log"
+        name:str, terminal_view:itf.If_LogView, log_file:str="app.log"
         ) -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
@@ -1038,7 +1032,7 @@ def create_app_logger(
     )
 
     #GUI用のハンドラー
-    view_handler = TabLogHandler(terminal_view)
+    view_handler = itf.If_ViewLogHandler(terminal_view)
     view_handler.setLevel(logging.DEBUG)
     view_handler.setFormatter(formatter)
 
@@ -1059,15 +1053,8 @@ def main(page: ft.Page):
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     #page.update()
 
-    global filePickers
-    for name in en.FilePickerIdx:
-        filePickers[name] = ft.FilePicker()
-        page.overlay.append(filePickers.get(name))
-    
-
-
-    makeCiSup = MakeCiSupApp()
-
+    mainFrame = MainFrame()
+    #!makeCiSup = MakeCiSupApp()
 
     def window_close_event(e):
         if e.data == "close":
@@ -1076,15 +1063,20 @@ def main(page: ft.Page):
     
     page.window.prevent_close = True
     page.window.on_event = window_close_event
-    page.add(makeCiSup)
+    page.add(mainFrame)
     page.window.center()
     #page.window.always_on_top = True
     page.update()
     
+    global filePickers
+    for name in en.FilePickerIdx:
+        filePickers[name] = ft.FilePicker()
+        page.overlay.append(filePickers.get(name))
+
     global appLogger
     appLogger = create_app_logger(
         name="myapp",
-        terminal_view=makeCiSup.cn_tab2.logView,
+        terminal_view=mainFrame.cn_tab2.logView,
         log_file="./datatext/myapp.log",
         )
     appLogger.info("Application started")
@@ -1098,10 +1090,8 @@ def main(page: ft.Page):
     else:
         gjfData = GjfData(Path(settingData[en.SettingLabel.DEF_GJF_PATH]))
     
-    makeCiSup.cn_tab0.set_txtf_init()
-    makeCiSup.cn_tab4.set_txtf_init()
-    makeCiSup.ciAuto.set_appLogger(appLogger)
-    makeCiSup.tab_change(en.TabIdx.FILE_PATH_SELECT)
+    mainFrame.set_init()
+    #!makeCiSup.cn_tab0.set_txtf_init()
     page.update()
     
 

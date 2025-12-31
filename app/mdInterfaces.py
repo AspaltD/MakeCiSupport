@@ -120,9 +120,9 @@ class If_FilePickerBar(ft.Row):
             "<--",
         )
 
-    def get_path(self) -> Optional[Path]:
-        if self.pickedPath is None: return None
-        if not self._check_txtf_path(): return None
+    def get_path(self) -> Path:
+        if self.pickedPath is None: raise ValueError("ファイルピッカーが不正です")
+        if not self._check_txtf_path(): raise ValueError("パスが不正です")
         return Path(self.pickedPath)
     
     def get_path_name(self) -> str:

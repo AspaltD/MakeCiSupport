@@ -10,6 +10,7 @@ class SettingLabel(Enum):
     TXT_PATH = "txt_path"
     MI_PATH = "mi_path"
     DEF_GJF_PATH = "def_gjf_path"
+    OTHER = "invalid_data"
 
 class CellInfoLbl(Enum):
     STATE = "state"
@@ -114,11 +115,11 @@ class FilePickerIdx(Enum):
             case 'GJF_PICK': return "gjf"
             case 'GJF_SAVE': return "gjf"
 
-    def get_setting_label(self) -> Optional[SettingLabel]:
+    def get_setting_label(self) -> SettingLabel:
         match self.name:
             case 'BUILDER_PICK': return SettingLabel.BUILDER_PATH
             case 'CIF_PICK': return SettingLabel.CIF_PATH
             case 'OUTPUT_PICK': return SettingLabel.TXT_PATH
             case 'MI_PICK': return SettingLabel.MI_PATH
             case 'GJF_PICK': return SettingLabel.DEF_GJF_PATH
-            case _: return None
+            case _: return SettingLabel.OTHER
