@@ -45,6 +45,17 @@ class Data_BtmBtnProperties():
             on_click=new_click
         )
 
+    def change_prop_click(self, on_click:ft.OptionalControlEventCallable=None):
+        new_click = on_click
+        if new_click is None: new_click = self._btmBtn_dflt_event
+        self = Data_BtmBtnProperties(
+            self.BTMBTNIDX,
+            self.VISIBLE,
+            self.DISABLED,
+            self.TEXT,
+            new_click
+        )
+
     def _btmBtn_dflt_event(self, e:ft.ControlEvent):
         raise ValueError("ボタンに機能が付加されていないにもかかわらずクリックできる状態です")
 
@@ -245,3 +256,67 @@ class If_Txtf_CellData(ft.TextField):
             read_only=read_only
         )
         self.cellDataLbl = cell_info_label
+
+
+#*TabChangeBar内でボタンの間に挟む「▼」文字。繰り返し構造のためクラス化してる。
+class Left_DownMarkTxt(ft.Text):
+    def __init__(self):
+        super().__init__(
+            width=180,
+            text_align=ft.TextAlign.CENTER,
+            value="▼"
+        )
+
+#*TabChangeBar内のタブを表すボタンの抽象クラスに当たるもの。
+#*引数にタブ番号と動作設定(動作内容の関係でfrm本体に渡してもらう必要がある)，表示テキストを指定。
+class Itf_Left_TabBtn(ft.FilledButton):
+    #* tabIdx -> タブの列挙クラス，leftBtnClicked -> タブ変更用のメソッドを要求
+    def __init__(self, tabIdx:en.TabIdx):
+        super().__init__(
+            width=150,
+            height=40
+        )
+        self.tabIdx = tabIdx
+        self.text = self.tabIdx.get_tab_name()
+
+    def set_init(self, on_click:ft.OptionalControlEventCallable) -> Tuple[str, ...]:
+        self.on_click = on_click
+        return (f'TabBtn({self.text}) is initialized.',)
+
+#* 具象ボタンクラスを収納するコンテナ
+#* 具象ボタンたちに与える動作メソッドはこのクラスの引数に要求
+class Itf_Left_TabChangeBar(ft.Container):
+    def __init__(self):
+        super().__init__(
+            border=ft.border.all(1, ft.Colors.BLACK),
+            padding=10,
+            expand=1,
+            bgcolor=ft.Colors.GREY_300
+        )
+
+        self.controls = self._add_contents()
+        self.content = ft.Column(
+            height=520,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=0,
+            expand_loose=True,
+            controls=self.controls
+        )
+
+    def _add_contents(self) -> List[ft.Control]:
+        controls:List[ft.Control] = []
+        for tabIdx in en.TabIdx:
+            if tabIdx.name == 'PLACE_HOLDER': continue
+            controls.append(Itf_Left_TabBtn(tabIdx))
+            controls.append(Left_DownMarkTxt())
+        controls.pop()
+        return controls
+    
+    def set_init(self, left_btn_clicked:ft.OptionalControlEventCallable) -> Tuple[str, ...]:
+        log = ("Left_TabChangeBar init -->",)
+        for cont in self.controls:
+            if not isinstance(cont, Itf_Left_TabBtn): continue
+            log += cont.set_init(left_btn_clicked)
+        log += ("<-- end",)
+        return log
+

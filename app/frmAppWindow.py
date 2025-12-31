@@ -524,6 +524,7 @@ class Cn_Tab1_ReadData(itf.Itf_TabContainer):
         props[en.BtmBtnIdx.OTHER_FUNC1].change_props(
             disabled=False,
             text="Save",
+            on_click=self.event_func1_save
         )
         props[en.BtmBtnIdx.OTHER_FUNC2].change_props(
             disabled=False,
@@ -625,6 +626,15 @@ class Cn_Tab1_ReadData(itf.Itf_TabContainer):
                     self.readTable.rows.remove(row)
                     appLogger.info(lastData)
             lastIdx = self.selectedRows.remove(delIdx)
+        self.update()
+    
+    def event_func1_save(self, e:ft.ControlEvent):
+        if not re.match('FileData_.*', fileData.get_value_value(en.CellInfoLbl.STATE)[0]): return
+        self.commit_fileData()
+        self.saveFilePicker.save_file(
+            allowed_extensions=['txt'],
+            file_name=fileData.get_value_value(en.CellInfoLbl.DATA_NAME)[0]
+        )
         self.update()
 
 class Cn_Tab2_BuilderLog(itf.Itf_TabContainer):
@@ -835,7 +845,7 @@ class MakeCiSupApp(ft.Container):
         )
         self.content = ft.Row(expand=True, controls=[])
         #左右を分ける一番大きな区分け
-        self.left_tabChangeBar = tcb.Left_TabChangeBar(leftBtnClicked=self.left_btn_event)
+        self.left_tabChangeBar = itf.Itf_Left_TabChangeBar()
         self.right_tabBase = ft.Column(expand=3, spacing=2, controls=[])
         #右側部分の2番目の区分け
         self.cn_tabContents = ft.Stack(expand=10, controls=[])
@@ -871,10 +881,12 @@ class MakeCiSupApp(ft.Container):
         self.ciAuto:ar.Ci_AutoRun
 
     def set_init(self):
+        log = self.left_tabChangeBar.set_init(self.left_btn_event)
+        for msg in log: appLogger.debug(msg=msg)
         for tab in self.cn_tabContents.controls:
             if not isinstance(tab, itf.Itf_TabContainer): continue
             log = tab.set_init()
-            for msg in log: appLogger.info(msg=msg)
+            for msg in log: appLogger.debug(msg=msg)
             tab.update()
         self._set_btmBtn_func()
         self.ciAuto = ar.Ci_AutoRun()
@@ -896,7 +908,20 @@ class MakeCiSupApp(ft.Container):
         self.update()
 
     def _set_btmBtn_func(self):
-        pass
+        for tab in self.cn_tabContents.controls:
+            if not isinstance(tab, itf.Itf_TabContainer): continue
+            props = self.cn_tab0.get_dict_props()
+            match tab.tabIdx.name:
+                case 'FILE_PATH_SELECT':
+                    props[en.BtmBtnIdx.NEXT_TAB].change_prop_click(self.event_tab0_next_readCIF)
+                    props[en.BtmBtnIdx.OTHER_FUNC1].change_prop_click(self.event_tab0_func1_readTXT)
+                case 'READ_DATA':
+                    props[en.BtmBtnIdx.NEXT_TAB].change_prop_click(self.event_tab1_next_save_go)
+                case 'BUILDER_LOG':
+                    props[en.BtmBtnIdx.NEXT_TAB].change_prop_click(self.event_tab2_next_stop)
+                case _:
+                    pass
+        self.update()
     def _btmBtn_func_change(self, toTabIdx:en.TabIdx):
         match toTabIdx.name:
             case 'FILE_PATH_SELECT':
@@ -921,35 +946,29 @@ class MakeCiSupApp(ft.Container):
         if not isinstance(e.control, tcb.Left_TabBtn): raise TypeError("タブ変更用のボタンではありません")
         self.tab_change(e.control.tabIdx)
         self.update()
-    
+    """
     def btmBtn_def_event(self, e:ft.ControlEvent):
         appLogger.error("This is BtmBtn's default event.")
         raise ValueError("ボタンに機能が付加されていないにもかかわらずクリックできる状態です")
 
+
     def btmBtn_exit_event(self, e:ft.ControlEvent):
         self.page.window.close()
+    """
 
-    def btmBtn_tab0_readCIF_event(self, e:ft.ControlEvent):
-        if self.cn_tab0.pickBuilder.check_true_path() is False: return
-        if self.cn_tab0.pickCIF.check_true_path() is False: return
-        appLogger.info("Read_CIF started -->")
-        if fileData.read_cif_file(self.cn_tab0.pickCIF.get_path()):
-            self.tab_change(en.TabIdx.READ_DATA)
-            self.cn_tab1.insert_cells()
-        appLogger.info("<-- end")
+    def event_tab0_next_readCIF(self, e:ft.ControlEvent):
+        self.cn_tab0.readCIF_event()
+        self.tab_change(en.TabIdx.READ_DATA)
+        self.cn_tab1.insert_cells()
         self.update()
-    def btmBtn_tab0_readTXT_event(self, e):
-        if self.cn_tab0.pickBuilder.check_true_path() is False: return
-        if self.cn_tab0.pickOutput.check_true_path() is False: return
-        appLogger.info("Read_TXT started -->")
-        if fileData.read_output_file(self.cn_tab0.pickOutput.get_path()):
-            self.tab_change(en.TabIdx.READ_DATA)
-            self.cn_tab1.insert_cells()
-        appLogger.info("<-- end")
+    def event_tab0_func1_readTXT(self, e:ft.ControlEvent):
+        self.cn_tab0.readTXT_event()
+        self.tab_change(en.TabIdx.READ_DATA)
+        self.cn_tab1.insert_cells()
         self.update()
     
-    def btmBtn_tab1_save_go_event(self,e):
-        if not re.match('FileData_.*', fileData[0][0]): return
+    def event_tab1_next_save_go(self, e:ft.ControlEvent):
+        if not re.match('FileData_.*', fileData.get_value_value(en.CellInfoLbl.STATE)[0]): return
         self.cn_tab1.commit_fileData()
         self.ciAuto.stopRun = False
         self.tab_change(en.TabIdx.BUILDER_LOG)
@@ -959,18 +978,19 @@ class MakeCiSupApp(ft.Container):
         self.cn_tab3.ins_txtf_fileName()
         self.tab_change(en.TabIdx.BUILDER_RESULT)
         self.update()
+    """
     def btmBtn_tab1_save_event(self, e):
         if not re.match('FileData_.*', fileData[0][0]): return
         self.cn_tab1.commit_fileData()
         self.cn_tab1.saveFilePicker.save_file(allowed_extensions=['txt'], file_name=fileData.search_get_value_single(en.CellDataLabel.FILE_NAME)[-1])
         self.update()
-    
-    def btmBtn_tab2_stop_event(self, e):
+    """
+    def event_tab2_next_stop(self, e:ft.ControlEvent):
         self.ciAuto.stopRun = True
         self.update()
 
-    def btmBtn_tab4_preview_event(self, e:ft.ControlEvent):
-        if not self.cn_tab4.pickMI.check_true_path(): return
+    def event_tab4_next_preview(self, e:ft.ControlEvent):
+        if not self.cn_tab4.pickMI.get_path() is None: return
         gjfData.read_mi(self.cn_tab4.pickMI.get_path())
         self.cn_tab5.ins_view_gjf()
         self.tab_change(en.TabIdx.MI_PREVIEW)
