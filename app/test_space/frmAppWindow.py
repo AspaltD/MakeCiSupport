@@ -362,46 +362,6 @@ class FileData(List[FileData_Value]):
         appLogger.info(f"data_name changed to {newFileName}")
         return lastName
 
-class Tab_FilePickerBar(itf.If_FilePickerBar):
-    def __init__(self, filePickerIdx: en.FilePickerIdx):
-        super().__init__(filePickerIdx)
-
-    def set_init(self):
-        appLogger.debug(f'FilePickerBar_{self._pickIdx.name} init start -->')
-        self._filePicker = filePickers[self._pickIdx]
-        appLogger.debug("_filePicker is set.")
-        self._filePicker.on_result = self._pick_event
-        self._pathTxtf.on_blur = self._txtf_on_blur_event
-        self._pickBtn.on_click = self._pick_btn_event
-        appLogger.debug(" contents_event is set.")
-        self.path_change(settingData[self._pickIdx.get_setting_label()])
-        appLogger.debug("default path (from setting_file) is set.")
-        appLogger.debug("<-- end")
-
-    def path_change(self, new_path_str:str):
-        appLogger.debug(f'FPBar_{self._pickIdx.name} path_change run. -->')
-        newPath = Path(new_path_str.replace(os.sep, '/').strip())
-        if not newPath.is_file():
-            self._path_change_false(newPath)
-            return
-        if newPath.suffix[1:] != self._fileType:
-            self._path_change_false(newPath)
-            return
-        self._path_change_true(newPath)
-    
-    def _path_change_false(self, new_path:Path):
-        self.pickedPath = None
-        self._pathTxtf.error_text = "is not file."
-        appLogger.debug(f'path({new_path}) is not file.')
-
-    def _path_change_true(self, new_path:Path):
-        self.pickedPath = new_path
-        self._pathTxtf.value = str(new_path.resolve())
-        self._pathTxtf.error_text = None
-        global settingData
-        settingData[self._pickIdx.get_setting_label()] = str(new_path.resolve())
-        appLogger.debug(f'path({new_path}) is selected!')
-
 class Cn_Tab99_PlaceHoldeeeer(itf.Itf_TabContainer):
     def __init__(self):
         super().__init__(tab_idx=en.TabIdx.PLACE_HOLDER, dflt_visible=True)
@@ -410,9 +370,9 @@ class Cn_Tab99_PlaceHoldeeeer(itf.Itf_TabContainer):
 class Cn_Tab0_FilePathSelect(itf.Itf_TabContainer):
     def __init__(self):
         super().__init__(tab_idx=en.TabIdx.FILE_PATH_SELECT, dflt_visible=True)
-        self.pickBuilder = Tab_FilePickerBar(en.FilePickerIdx.BUILDER_PICK)
-        self.pickCIF = Tab_FilePickerBar(en.FilePickerIdx.CIF_PICK)
-        self.pickTXT = Tab_FilePickerBar(en.FilePickerIdx.OUTPUT_PICK)
+        self.pickBuilder = itf.If_FilePickerBar(en.FilePickerIdx.BUILDER_PICK)
+        self.pickCIF = itf.If_FilePickerBar(en.FilePickerIdx.CIF_PICK)
+        self.pickTXT = itf.If_FilePickerBar(en.FilePickerIdx.OUTPUT_PICK)
 
         self.controls = [
             ft.Text("Builder Path"),

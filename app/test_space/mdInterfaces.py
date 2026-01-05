@@ -88,34 +88,77 @@ class If_FilePickerBar(ft.Row):
         super().__init__(
             spacing=0
         )
-        self._pickIdx = filePickerIdx
-        self._fileType = self._pickIdx.get_fileType()
-        self._filePicker:ft.FilePicker
-        self._pickedPath:Optional[Path] = None
+        self.pickIdx = filePickerIdx
+        self.filePicker:ft.FilePicker
+        self.pickedPath:Optional[Path] = None
 
-        self._pathTxtf = ft.TextField(
+        self.pathTxtf = ft.TextField(
             expand=9,
             dense=True,
-            hint_text=self._pickIdx.value,
+            hint_text=self.pickIdx.value,
         )
-        self._pickBtn = ft.FilledButton(
+        self.pickBtn = ft.FilledButton(
             expand=1,
             text="File",
         )
         self.controls = [
-            self._pathTxtf,
-            self._pickBtn,
+            self.pathTxtf,
+            self.pickBtn,
         ]
 
-    def set_init(self) -> None:
-        raise ValueError("this method is interface. please override.")
+    def set_init(self, file_picker:ft.FilePicker, path_from_setting:Optional[str]) -> Tuple[str, ...]:
+        self.filePicker = file_picker
+        self.filePicker.on_result = self._pick_event
+        self.pathTxtf.on_blur = self._txtf_on_blur_event
+        self.pickBtn.on_click = self._pick_btn_event
+        self.path_change(path_from_setting)
+        return (
+            f'PickerBar_{self.pickIdx.value}_initialize -->',
+            f'  fileType    -> {self.pickIdx.get_fileType()}',
+            f'  pickedName  -> {self.get_path_name()}',
+            f'  pickedPath  -> {self.get_path_str()}',
+            "<--",
+        )
 
     def get_path(self) -> Optional[Path]:
-        if self._pickedPath is None: return None
-        return Path(self._pickedPath)
+        if self.pickedPath is None: return None
+        if not self._check_txtf_path(): raise ValueError("パスが不正です")
+        return Path(self.pickedPath)
+    
+    def get_path_str(self) -> str:
+        if self.pickedPath is None: return "None"
+        return str(self.pickedPath.resolve())
+    
+    def get_path_name(self) -> str:
+        if self.pickedPath is None: return "not file picked"
+        return self.pickedPath.name
+    
+    def _check_txtf_path(self) -> bool:
+        path = self.pickedPath
+        if path is None: return False
+        if not path.is_file(): return False
+        if path.suffix[1:] != self.pickIdx.get_fileType(): return False
+        return True
 
-    def path_change(self, new_path_str:str) -> None:
-        raise ValueError("this method is interface. please override.")
+    def path_change(self, new_path_str:Optional[str]=None) -> Tuple[str, ...]:
+        newPathStr = new_path_str
+        if newPathStr is None: newPathStr = "None"
+        newPathStr = newPathStr.replace(os.sep, '/').strip('"')
+        newPath = Path(newPathStr)
+        if newPath.is_file():
+            self.pathTxtf.value = str(newPath.resolve())
+            self.pathTxtf.error_text = None
+            self.pickedPath = newPath
+        else:
+            self.pathTxtf.value = ""
+            self.pathTxtf.error_text = "is not true path"
+            self.pickedPath = None
+        return (
+            f'PickerBar_{self.pickIdx.value}_path_changed -->',
+            f'  pickedName  -> {self.get_path_name()}',
+            f'  pickedPath  -> {self.get_path_str()}',
+            "<--",
+        )
 
     def _pick_event(self, e:ft.FilePickerResultEvent):
         if e.files: self.path_change(e.files[0].path)
@@ -124,7 +167,7 @@ class If_FilePickerBar(ft.Row):
         self.path_change(e.control.value)
         self.update()
     def _pick_btn_event(self, e:ft.ControlEvent):
-        self._filePicker.pick_files(allowed_extensions=[self._fileType])
+        self.filePicker.pick_files(allowed_extensions=[self.pickIdx.get_fileType()])
 
 class Data_BtmBtnPropsDict(Dict[en.BtmBtnIdx, Data_BtmBtnProperties]):
     def __init__(self):
