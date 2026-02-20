@@ -9,3 +9,4 @@ datatext/*
 dist/*
 build/*
 build.spec
+app/beta6.0/__pycache__/*
