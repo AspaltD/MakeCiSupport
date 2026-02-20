@@ -16,7 +16,7 @@ class _Left_txt_DownMark(ft.Text):
         )
 
 #?タブ変更欄のタブとリンクするボタン
-class _Left_btn_TabChange(ft.FilledButton):
+class Left_btn_TabChange(ft.FilledButton):
     def __init__(self, tab_idx:en.TabIdx):
         super().__init__(
             width=150,
@@ -34,22 +34,29 @@ class Left_box_TabChangeBar(ft.Container):
             expand=1,
             bgcolor=ft.Colors.GREY_300
         )
+        self.tanBtns = self._add_controls()
         self.content = ft.Column(
             height=520,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             spacing=0,
             expand_loose=True,
-            controls=self._add_controls()
+            controls=self.tanBtns
         )
 
     def _add_controls(self) -> List[ft.Control]:
         controls:List[ft.Control] = []
         for _tabIdx in en.TabIdx:
             if _tabIdx.name == 'PLACE_HOLDER': continue
-            controls.append(_Left_btn_TabChange(_tabIdx))
+            controls.append(Left_btn_TabChange(_tabIdx))
             controls.append(_Left_txt_DownMark())
         controls.pop()
         return controls
+
+    def set_tabBtn_on_click(self, left_tabBtn_on_click_event:ft.OptionalControlEventCallable):
+        for _tabBtn in self.tanBtns:
+            if not isinstance(_tabBtn, Left_btn_TabChange): continue
+            _tabBtn.on_click = left_tabBtn_on_click_event
+
 
 #?ボトムボタンの属性のうちタブに依存するものを抜き出したもの
 #!ボトムボタンをタブコンテナの配下にするため使わない可能性大
@@ -117,12 +124,12 @@ class _Rgt_box_TabContainer(ft.Container):
             bgcolor=ft.Colors.GREY_50,
             border=ft.border.all(1, ft.Colors.random())
         )
-        self.tabItems:List[ft.Control] = []
+        #self.tabItems:List[ft.Control] = []
 
 #?Beta6.0から新たにタブコンテンツと下部ボタンたちを包括した右側パーツとして定義。
 #?タブごとに下部ボタンを持たせることで，オブジェクトの増加と引き換えに構造の簡略化を図る目的。
 #?タブの固有機能はここに持たせる。
-class _Rgt_col_TabBase(ft.Column):
+class Rgt_col_TabBase(ft.Column):
     def __init__(self, tab_idx:en.TabIdx, dflt_visible:bool=False):
         super().__init__(
             expand=True,
@@ -130,6 +137,7 @@ class _Rgt_col_TabBase(ft.Column):
             visible=dflt_visible
         )
         self.tabIdx = tab_idx
+        self.tabItems:List[ft.Control] = []
         self.tabCont = _Rgt_box_TabContainer()
         self.btmBtns = Btm_row_FuncBtns()
         self.controls = [
@@ -138,14 +146,20 @@ class _Rgt_col_TabBase(ft.Column):
         ]
 
 #*配置スペースを維持するためのダミータブ。常に最背面に表示。
-class Rgt_tab_99_PlaceHolder(_Rgt_col_TabBase):
+class Rgt_tab_99_PlaceHolder(Rgt_col_TabBase):
     def __init__(self):
         super().__init__(tab_idx=en.TabIdx.PLACE_HOLDER, dflt_visible=True)
         self.tabCont.content = ft.Placeholder(color=ft.Colors.random())
+        for _btmBtn in self.btmBtns.controls:
+            if not isinstance(_btmBtn, _Btm_btn_TabFunc): continue
+            match _btmBtn.btmBtnIdx.name:
+                case _:
+                    _btmBtn.visible = False
+
 
 #?ファイル選択用のコンテンツ群。
 #?外部で定義が必要なFilePickerはセットメソッドで任意に指定が必要。FilePicker周りの機能以外は単独でも動く。
-class Rgt_row_FilePickerBar(ft.Row):
+class Tab_row_FilePickerBar(ft.Row):
     def __init__(self, file_picker_idx:en.FilePickerIdx):
         super().__init__(
             spacing=0
@@ -203,12 +217,13 @@ class Rgt_row_FilePickerBar(ft.Row):
     def _btn_on_click_event(self, e:ft.ControlEvent):
         self._filePicker.pick_files(allowed_extensions=[self._fileType])
 
-class Rgt_tab_0_CIFSelect(_Rgt_col_TabBase):
+#*タブ0。CIFファイル等を選ぶ。
+class Rgt_tab_0_CIFSelect(Rgt_col_TabBase):
     def __init__(self):
         super().__init__(tab_idx=en.TabIdx.CIF_SELECT, dflt_visible=True)
-        self.pickBuilder = Rgt_row_FilePickerBar(en.FilePickerIdx.PICK_BUILDER)
-        self.pickCIF = Rgt_row_FilePickerBar(en.FilePickerIdx.PICK_CIF)
-        self.pickTXT = Rgt_row_FilePickerBar(en.FilePickerIdx.PICK_TXT)
+        self.pickBuilder = Tab_row_FilePickerBar(en.FilePickerIdx.PICK_BUILDER)
+        self.pickCIF = Tab_row_FilePickerBar(en.FilePickerIdx.PICK_CIF)
+        self.pickTXT = Tab_row_FilePickerBar(en.FilePickerIdx.PICK_TXT)
 
         self.tabCont.content = ft.Column(
             controls=[
@@ -236,4 +251,98 @@ class Rgt_tab_0_CIFSelect(_Rgt_col_TabBase):
                     _btmBtn.text = "ReadTXT"
                 case 'OTHER_FUNC2':
                     _btmBtn.visible = False
+
+class Tab_txtf_CellData(ft.TextField):
+    def __init__(self, cell_data_lbl:en.CellDataLabel, expand:int=1, read_only:bool=True):
+        super().__init__(
+            expand=expand,
+            dense=True,
+            read_only=read_only,
+        )
+        self.cellDataLbl = cell_data_lbl
+        self.label = self.cellDataLbl.value
+
+class Rgt_tab_1_CIFPreview(Rgt_col_TabBase):
+    def __init__(self):
+        super().__init__(tab_idx=en.TabIdx.CIF_PREVIEW)
+        self.dataName = Tab_txtf_CellData(en.CellDataLabel.DATA_NAME, read_only=False)
+        self.spaceGItNum = Tab_txtf_CellData(en.CellDataLabel.SPACE_G_IT_NUM)
+        self.spaceGName = Tab_txtf_CellData(en.CellDataLabel.SPACE_G_NAME)
+        self.cellLenA = Tab_txtf_CellData(en.CellDataLabel.CELL_LEN_A)
+        self.cellLenB = Tab_txtf_CellData(en.CellDataLabel.CELL_LEN_B)
+        self.cellLenC = Tab_txtf_CellData(en.CellDataLabel.CELL_LEN_C)
+        self.cellAngleA = Tab_txtf_CellData(en.CellDataLabel.CELL_ANGLE_A)
+        self.cellAngleB = Tab_txtf_CellData(en.CellDataLabel.CELL_ANGLE_B)
+        self.cellAngleC = Tab_txtf_CellData(en.CellDataLabel.CELL_ANGLE_C)
+        self.cellVolume = Tab_txtf_CellData(en.CellDataLabel.CELL_VOLUME)
+        self.tabItems = [
+            self.dataName, self.spaceGItNum, self.spaceGName, self.cellLenA,
+            self.cellLenB, self.cellLenC, self.cellAngleA, self.cellAngleB,
+            self.cellAngleC, self.cellVolume,
+        ]
+        self._cellDataTxtfBase = ft.Column(
+            expand=2,
+            controls=[
+                self.dataName,
+                ft.Row(
+                    spacing=0,
+                    controls=[self.cellLenA, self.cellLenB, self.cellLenC]
+                ),
+                ft.Row(
+                    spacing=0,
+                    controls=[self.cellAngleA, self.cellAngleB, self.cellAngleC]
+                ),
+                ft.Row(
+                    spacing=0,
+                    controls=[self.spaceGItNum, self.spaceGName, self.cellVolume]
+                ),
+            ]
+        )
+
+        self.atomsTable = ft.DataTable(
+            border=ft.border.all(1, ft.Colors.BLACK),
+            show_checkbox_column=True,
+            column_spacing=24,
+            columns=[
+                ft.DataColumn(ft.Text("Atom")),
+                ft.DataColumn(ft.Text(" Idx1 "),heading_row_alignment=ft.MainAxisAlignment.CENTER,numeric=True),
+                ft.DataColumn(ft.Text(" Idx2 "),heading_row_alignment=ft.MainAxisAlignment.CENTER,numeric=True),
+                ft.DataColumn(ft.Text("  X  "),heading_row_alignment=ft.MainAxisAlignment.CENTER,numeric=True),
+                ft.DataColumn(ft.Text("  Y  "),heading_row_alignment=ft.MainAxisAlignment.CENTER,numeric=True),
+                ft.DataColumn(ft.Text("  Z  "),heading_row_alignment=ft.MainAxisAlignment.CENTER,numeric=True),
+                ft.DataColumn(ft.Text("Occ."),numeric=True)
+            ],
+            rows=[]
+        )
+        self._atomsTableBase = ft.Column(
+            expand=3,
+            controls=[self.atomsTable],
+            scroll=ft.ScrollMode.ALWAYS
+        )
+
+        self.tabCont.content = ft.Column(
+            controls=[
+                self._cellDataTxtfBase,
+                self._atomsTableBase
+            ]
+        )
+
+        for _btmBtn in self.btmBtns.controls:
+            if not isinstance(_btmBtn, _Btm_btn_TabFunc): continue
+            match _btmBtn.btmBtnIdx.name:
+                case 'EXIT_APP':
+                    _btmBtn.visible = True
+                    _btmBtn.disabled = False
+                case 'NEXT_TAB':
+                    _btmBtn.visible = True
+                    _btmBtn.disabled = False
+                    _btmBtn.text = "Save&Go"
+                case 'OTHER_FUNC1':
+                    _btmBtn.visible = True
+                    _btmBtn.disabled = False
+                    _btmBtn.text = "Save"
+                case 'OTHER_FUNC2':
+                    _btmBtn.visible = True
+                    _btmBtn.disabled = False
+                    _btmBtn.text = "Remove"
 

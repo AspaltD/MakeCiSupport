@@ -51,3 +51,18 @@ class FilePickerIdx(Enum):
             case 'PICK_GJF': return "gjf"
             case 'SAVE_GJF': return "gjf"
 
+class CellDataLabel(Enum):
+    STATE = "state"
+    DATA_NAME = "data_name"
+    SPACE_G_IT_NUM = "space_group_IT_number"
+    SPACE_G_NAME = "space_group_name_H-M_alt"
+    CELL_LEN_A = "cell_length_a"
+    CELL_LEN_B = "cell_length_b"
+    CELL_LEN_C = "cell_length_c"
+    CELL_ANGLE_A = "cell_angle_alpha"
+    CELL_ANGLE_B = "cell_angle_beta"
+    CELL_ANGLE_C = "cell_angle_gamma"
+    CELL_VOLUME = "cell_volume"
+    ATOMS = "atoms"
+
+
