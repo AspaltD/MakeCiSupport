@@ -32,3 +32,22 @@ class BtmBtnIdx(IntEnum):
             case 'OTHER_FUNC1': return "Func1"
             case 'OTHER_FUNC2': return "Func2"
 
+class FilePickerIdx(Enum):
+    PICK_BUILDER = "Builder.exe Path"
+    PICK_CIF = "CIF File Path"
+    PICK_TXT = "Text File Path"
+    SAVE_TXT = "Text Output Path"
+    PICK_MI = "MI File Path"
+    PICK_GJF = "Based GJF File Path"
+    SAVE_GJF = "GJF Output Path"
+
+    def get_file_type(self) -> str:
+        match self.name:
+            case 'PICK_BUILDER': return "exe"
+            case 'PICK_CIF': return "cif"
+            case 'PICK_TXT': return "txt"
+            case 'SAVE_TXT': return "txt"
+            case 'PICK_MI': return "mi"
+            case 'PICK_GJF': return "gjf"
+            case 'SAVE_GJF': return "gjf"
+

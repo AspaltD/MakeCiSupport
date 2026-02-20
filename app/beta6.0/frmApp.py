@@ -12,10 +12,12 @@ class AppMainFrame(ft.Container):
         )
         self.leftTabChBar = itf.Left_box_TabChangeBar()
         self.tab99 = itf.Rgt_tab_99_PlaceHolder()
+        self.tab0 = itf.Rgt_tab_0_CIFSelect()
         self.rgtTabs = ft.Stack(
             expand=3,
             controls=[
                 self.tab99,
+                self.tab0,
             ]
         )
         self.content = ft.Row(

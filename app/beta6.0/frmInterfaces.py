@@ -1,5 +1,7 @@
 import flet as ft
 from typing import List,Dict
+from pathlib import Path
+import os
 
 import enEnums as en
 
@@ -141,5 +143,97 @@ class Rgt_tab_99_PlaceHolder(_Rgt_col_TabBase):
         super().__init__(tab_idx=en.TabIdx.PLACE_HOLDER, dflt_visible=True)
         self.tabCont.content = ft.Placeholder(color=ft.Colors.random())
 
+#?ファイル選択用のコンテンツ群。
+#?外部で定義が必要なFilePickerはセットメソッドで任意に指定が必要。FilePicker周りの機能以外は単独でも動く。
+class Rgt_row_FilePickerBar(ft.Row):
+    def __init__(self, file_picker_idx:en.FilePickerIdx):
+        super().__init__(
+            spacing=0
+        )
+        self.pickerIdx = file_picker_idx
+        self._fileType = self.pickerIdx.get_file_type()
+        self._filePicker:ft.FilePicker
+        self.pickedPath:Path
 
+        self.txtfPath = ft.TextField(
+            expand=9,
+            dense=True,
+            hint_text=self.pickerIdx.value,
+            on_blur=self._txtf_on_blur_event
+        )
+        self._btnPick = ft.FilledButton(
+            expand=1,
+            text="File",
+        )
+        self.controls = [
+            self.txtfPath,
+            self._btnPick,
+        ]
+
+    def set_picker_init(self, file_picker:ft.FilePicker):
+        self._filePicker = file_picker
+        self._filePicker.on_result = self._picked_event
+        self._btnPick.on_click = self._btn_on_click_event
+
+    def path_change(self, new_path_str:str):
+        if not new_path_str.strip(): self._path_error_msg()
+        newPath = Path(new_path_str.replace(os.sep, '/').strip().strip('"'))
+        if newPath.is_file() and newPath.suffix[1:] == self._fileType:
+            self.pickedPath = newPath
+            self.txtfPath.value = str(newPath.resolve())
+            self.txtfPath.error_text = None
+        else:
+            self._path_error_msg()
+        self.update()
+
+    def _path_error_msg(self):
+        try:
+            del self.pickedPath
+        except:
+            pass
+        self.txtfPath.error_text = "is not file"
+
+    def _picked_event(self, e:ft.FilePickerResultEvent):
+        if e.files: self.path_change(e.files[0].path)
+        self.update()
+
+    def _txtf_on_blur_event(self, e:ft.ControlEvent):
+        self.path_change(e.control.value)
+
+    def _btn_on_click_event(self, e:ft.ControlEvent):
+        self._filePicker.pick_files(allowed_extensions=[self._fileType])
+
+class Rgt_tab_0_CIFSelect(_Rgt_col_TabBase):
+    def __init__(self):
+        super().__init__(tab_idx=en.TabIdx.CIF_SELECT, dflt_visible=True)
+        self.pickBuilder = Rgt_row_FilePickerBar(en.FilePickerIdx.PICK_BUILDER)
+        self.pickCIF = Rgt_row_FilePickerBar(en.FilePickerIdx.PICK_CIF)
+        self.pickTXT = Rgt_row_FilePickerBar(en.FilePickerIdx.PICK_TXT)
+
+        self.tabCont.content = ft.Column(
+            controls=[
+                ft.Text("Builder Path"),
+                self.pickBuilder,
+                ft.Text("CIF File Path"),
+                self.pickCIF,
+                ft.Text("Text File Path"),
+                self.pickTXT,
+            ]
+        )
+        for _btmBtn in self.btmBtns.controls:
+            if not isinstance(_btmBtn, _Btm_btn_TabFunc): continue
+            match _btmBtn.btmBtnIdx.name:
+                case 'EXIT_APP':
+                    _btmBtn.visible = True
+                    _btmBtn.disabled = False
+                case 'NEXT_TAB':
+                    _btmBtn.visible = True
+                    _btmBtn.disabled = False
+                    _btmBtn.text = "ReadCIF"
+                case 'OTHER_FUNC1':
+                    _btmBtn.visible = True
+                    _btmBtn.disabled = False
+                    _btmBtn.text = "ReadTXT"
+                case 'OTHER_FUNC2':
+                    _btmBtn.visible = False
 
