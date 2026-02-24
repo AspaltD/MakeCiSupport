@@ -14,10 +14,12 @@ class AppMainFrame(ft.Container):
         self.tab99 = itf.Rgt_tab_99_PlaceHolder()
         self.tab0 = itf.Rgt_tab_0_CIFSelect()
         self.tab1 = itf.Rgt_tab_1_CIFPreview()
+        self.tab2 = itf.Rgt_tab_2_AppLogs()
         self.rgtTabs = ft.Stack(
             expand=3,
             controls=[
                 self.tab99,
+                self.tab2,
                 self.tab0,
                 self.tab1,
             ]

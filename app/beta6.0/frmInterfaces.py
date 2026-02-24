@@ -2,6 +2,7 @@ import flet as ft
 from typing import List,Dict
 from pathlib import Path
 import os
+from logging import LogRecord, Handler
 
 import enEnums as en
 
@@ -15,7 +16,7 @@ class _Left_txt_DownMark(ft.Text):
             value=value
         )
 
-#?タブ変更欄のタブとリンクするボタン
+#*タブ変更欄のタブとリンクするボタン
 class Left_btn_TabChange(ft.FilledButton):
     def __init__(self, tab_idx:en.TabIdx):
         super().__init__(
@@ -78,7 +79,7 @@ class Btm_data_BtnProps():
         self.TEXT = _text
         self.ON_CLICK = on_click
 
-#*タブの下部に置く固有の機能を持たせるためのボタン。
+#?タブの下部に置く固有の機能を持たせるためのボタン。
 class _Btm_btn_TabFunc(ft.FilledButton):
     def __init__(self, btm_btn_idx:en.BtmBtnIdx):
         super().__init__(
@@ -126,9 +127,9 @@ class _Rgt_box_TabContainer(ft.Container):
         )
         #self.tabItems:List[ft.Control] = []
 
-#?Beta6.0から新たにタブコンテンツと下部ボタンたちを包括した右側パーツとして定義。
-#?タブごとに下部ボタンを持たせることで，オブジェクトの増加と引き換えに構造の簡略化を図る目的。
-#?タブの固有機能はここに持たせる。
+#*Beta6.0から新たにタブコンテンツと下部ボタンたちを包括した右側パーツとして定義。
+#*タブごとに下部ボタンを持たせることで，オブジェクトの増加と引き換えに構造の簡略化を図る目的。
+#*タブの固有機能はここに持たせる。
 class Rgt_col_TabBase(ft.Column):
     def __init__(self, tab_idx:en.TabIdx, dflt_visible:bool=False):
         super().__init__(
@@ -145,7 +146,7 @@ class Rgt_col_TabBase(ft.Column):
             self.btmBtns
         ]
 
-#*配置スペースを維持するためのダミータブ。常に最背面に表示。
+#?配置スペースを維持するためのダミータブ。常に最背面に表示。
 class Rgt_tab_99_PlaceHolder(Rgt_col_TabBase):
     def __init__(self):
         super().__init__(tab_idx=en.TabIdx.PLACE_HOLDER, dflt_visible=True)
@@ -157,8 +158,8 @@ class Rgt_tab_99_PlaceHolder(Rgt_col_TabBase):
                     _btmBtn.visible = False
 
 
-#?ファイル選択用のコンテンツ群。
-#?外部で定義が必要なFilePickerはセットメソッドで任意に指定が必要。FilePicker周りの機能以外は単独でも動く。
+#*ファイル選択用のコンテンツ群。
+#*外部で定義が必要なFilePickerはセットメソッドで任意に指定が必要。FilePicker周りの機能以外は単独でも動く。
 class Tab_row_FilePickerBar(ft.Row):
     def __init__(self, file_picker_idx:en.FilePickerIdx):
         super().__init__(
@@ -252,6 +253,7 @@ class Rgt_tab_0_CIFSelect(Rgt_col_TabBase):
                 case 'OTHER_FUNC2':
                     _btmBtn.visible = False
 
+#?タブ1の格子情報用のテキストフィールド。
 class Tab_txtf_CellData(ft.TextField):
     def __init__(self, cell_data_lbl:en.CellDataLabel, expand:int=1, read_only:bool=True):
         super().__init__(
@@ -262,6 +264,7 @@ class Tab_txtf_CellData(ft.TextField):
         self.cellDataLbl = cell_data_lbl
         self.label = self.cellDataLbl.value
 
+#?タブ1。読み取った結晶の情報のプレビュー。
 class Rgt_tab_1_CIFPreview(Rgt_col_TabBase):
     def __init__(self):
         super().__init__(tab_idx=en.TabIdx.CIF_PREVIEW)
@@ -345,4 +348,67 @@ class Rgt_tab_1_CIFPreview(Rgt_col_TabBase):
                     _btmBtn.visible = True
                     _btmBtn.disabled = False
                     _btmBtn.text = "Remove"
+
+#*タブ2のアプリログを表示するリストビュー
+class Tab_listV_AppLog(ft.ListView):
+    def __init__(self):
+        super().__init__(
+            expand=True,
+            auto_scroll=True,
+            spacing=0,
+        )
+
+    def log_write(self, message:str, level:str):
+        if not message.strip(): return
+        colorMap = {
+            "DEBUG": ft.Colors.GREY,
+            "INFO": ft.Colors.GREY_300,
+            "WARNING": ft.Colors.YELLOW,
+            "ERROR": ft.Colors.RED,
+            "CRITICAL": ft.Colors.RED_400,
+        }
+
+        self.controls.append(
+            ft.Text(
+                value=message.rstrip(),
+                font_family='Consoals',
+                size=14,
+                color=colorMap.get(level, ft.Colors.BLUE_50),
+                selectable=True,
+            )
+        )
+        self.update()
+
+#*リストビュー用のログハンドラー。
+class Tab_ViewLogHandler(Handler):
+    def __init__(self, terminal_view:Tab_listV_AppLog):
+        super().__init__()
+        self.terminalView = terminal_view
+
+    def emit(self, record: LogRecord):
+        msg = self.format(record)
+        self.terminalView.log_write(msg, record.levelname)
+
+#*タブ2。アプリのログの表示先。
+class Rgt_tab_2_AppLogs(Rgt_col_TabBase):
+    def __init__(self):
+        super().__init__(tab_idx=en.TabIdx.APP_LOG, dflt_visible=True)
+        self.tabCont.bgcolor = ft.Colors.BLACK
+        self.listV_appLog = Tab_listV_AppLog()
+        self.tabCont.content = self.listV_appLog
+
+        for _btmBtn in self.btmBtns.controls:
+            if not isinstance(_btmBtn, _Btm_btn_TabFunc): continue
+            match _btmBtn.btmBtnIdx.name:
+                case 'EXIT_APP':
+                    _btmBtn.visible = True
+                    _btmBtn.disabled = True
+                case 'NEXT_TAB':
+                    _btmBtn.visible = True
+                    _btmBtn.disabled = False
+                    _btmBtn.text = "Stop"
+                case 'OTHER_FUNC1':
+                    _btmBtn.visible = False
+                case 'OTHER_FUNC2':
+                    _btmBtn.visible = False
 
