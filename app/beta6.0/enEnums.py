@@ -6,7 +6,7 @@ class TabIdx(IntEnum):
     APP_LOG = 2
     BUILDER_RESULT = 3
     MI_SELECT = 4
-    MI_PREVIEW = 5
+    GJF_PREVIEW = 5
     PLACE_HOLDER = 99
 
     def get_tab_name(self) -> str:
@@ -16,7 +16,7 @@ class TabIdx(IntEnum):
             case 'APP_LOG': return "アプリ動作ログ"
             case 'BUILDER_RESULT': return "Builder動作完了"
             case 'MI_SELECT': return "MIファイル設定"
-            case 'MI_PREVIEW': return "GJF変換プレビュー"
+            case 'GJF_PREVIEW': return "GJF変換プレビュー"
             case 'PLACE_HOLDER': return "プレースホルダ"
 
 class BtmBtnIdx(IntEnum):

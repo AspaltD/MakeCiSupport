@@ -401,14 +401,192 @@ class Rgt_tab_2_AppLogs(Rgt_col_TabBase):
             if not isinstance(_btmBtn, _Btm_btn_TabFunc): continue
             match _btmBtn.btmBtnIdx.name:
                 case 'EXIT_APP':
-                    _btmBtn.visible = True
+                    _btmBtn.visible = False
                     _btmBtn.disabled = True
                 case 'NEXT_TAB':
-                    _btmBtn.visible = True
+                    _btmBtn.visible = False
                     _btmBtn.disabled = False
                     _btmBtn.text = "Stop"
                 case 'OTHER_FUNC1':
                     _btmBtn.visible = False
                 case 'OTHER_FUNC2':
                     _btmBtn.visible = False
+
+#?タブ3。Builderの実行終了後画面。
+class Rgt_tab_3_BuilderResult(Rgt_col_TabBase):
+    def __init__(self):
+        super().__init__(tab_idx=en.TabIdx.BUILDER_RESULT)
+        self.txtf_cifName = ft.TextField(dense=True, read_only=True, max_lines=3)
+        self.txtf_savePath = ft.TextField(dense=True, read_only=True, max_lines=3)
+        self.txtf_runtime = ft.TextField(dense=True, read_only=True)
+
+        self.tabCont.content = ft.Column(
+            expand=True,
+            controls=[
+                ft.Text("CellData_file_name"),
+                self.txtf_cifName,
+                ft.Text("Saved_file_path"),
+                self.txtf_savePath,
+                ft.Text("Builder_run_time"),
+                self.txtf_runtime,
+            ]
+        )
+
+        for _btmBtn in self.btmBtns.controls:
+            if not isinstance(_btmBtn, _Btm_btn_TabFunc): continue
+            match _btmBtn.btmBtnIdx.name:
+                case 'EXIT_APP':
+                    _btmBtn.visible = True
+                    _btmBtn.disabled = False
+                case 'NEXT_TAB':
+                    _btmBtn.visible = True
+                    _btmBtn.disabled = True
+                case 'OTHER_FUNC1':
+                    _btmBtn.visible = False
+                case 'OTHER_FUNC2':
+                    _btmBtn.visible = False
+
+
+#*タブ4。GJF作成用のMIファイル選択と基礎となるGJFの選択
+class Rgt_tab_4_MISelect(Rgt_col_TabBase):
+    def __init__(self):
+        super().__init__(tab_idx=en.TabIdx.MI_SELECT)
+        self.pickMI = Tab_row_FilePickerBar(en.FilePickerIdx.PICK_MI)
+        self.pickGJF = Tab_row_FilePickerBar(en.FilePickerIdx.PICK_GJF)
+        self.listV_baseGJF = ft.ListView(
+            expand=True,
+            auto_scroll=True,
+            spacing=0,
+            controls=[],
+        )
+        self.cont_viewBase = ft.Container(
+            expand=True,
+            bgcolor=ft.Colors.LIGHT_BLUE_50,
+            padding=10,
+            border=ft.border.all(1, ft.Colors.BLACK),
+            content=self.listV_baseGJF,
+        )
+
+        self.tabCont.content = ft.Column(
+            expand=True,
+            controls=[
+                ft.Text("MI Path"),
+                self.pickMI,
+                ft.Text("Base GJF Path"),
+                self.pickGJF,
+                self.cont_viewBase,
+            ]
+        )
+
+        for _btmBtn in self.btmBtns.controls:
+            if not isinstance(_btmBtn, _Btm_btn_TabFunc): continue
+            match _btmBtn.btmBtnIdx.name:
+                case 'EXIT_APP':
+                    _btmBtn.visible = True
+                    _btmBtn.disabled = False
+                case 'NEXT_TAB':
+                    _btmBtn.visible = True
+                    _btmBtn.disabled = False
+                    _btmBtn.text = "Preview"
+                case 'OTHER_FUNC1':
+                    _btmBtn.visible = True
+                    _btmBtn.disabled = False
+                    _btmBtn.text = "Read_Base"
+                case 'OTHER_FUNC2':
+                    _btmBtn.visible = False
+
+#?タブ5。作成するGJFのプレビュー
+class Rgt_tab_5_GJFPreview(Rgt_col_TabBase):
+    def __init__(self):
+        super().__init__(tab_idx=en.TabIdx.GJF_PREVIEW)
+        self.listV_GJFPre = ft.ListView(
+            expand=True,
+            auto_scroll=True,
+            spacing=0,
+            controls=[]
+        )
+        self.tabCont.bgcolor = ft.Colors.LIGHT_BLUE_50
+        self.tabCont.content = self.listV_GJFPre
+
+        for _btmBtn in self.btmBtns.controls:
+            if not isinstance(_btmBtn, _Btm_btn_TabFunc): continue
+            match _btmBtn.btmBtnIdx.name:
+                case 'EXIT_APP':
+                    _btmBtn.visible = True
+                    _btmBtn.disabled = False
+                case 'NEXT_TAB':
+                    _btmBtn.visible = True
+                    _btmBtn.disabled = False
+                    _btmBtn.text = "Save"
+                case 'OTHER_FUNC1':
+                    _btmBtn.visible = False
+                case 'OTHER_FUNC2':
+                    _btmBtn.visible = False
+
+#*メインフレーム。タブ変更機能のみ持たせた容器。
+class AppMainFrame(ft.Container):
+    def __init__(self):
+        super().__init__(
+            expand=True,
+        )
+        self.leftTabChBar = Left_box_TabChangeBar()
+        self.tab99 = Rgt_tab_99_PlaceHolder()
+        self.tab0 = Rgt_tab_0_CIFSelect()
+        self.tab1 = Rgt_tab_1_CIFPreview()
+        self.tab2 = Rgt_tab_2_AppLogs()
+        self.tab3 = Rgt_tab_3_BuilderResult()
+        self.tab4 = Rgt_tab_4_MISelect()
+        self.tab5 = Rgt_tab_5_GJFPreview()
+        self.rgtTabs = ft.Stack(
+            expand=3,
+            controls=[
+                self.tab99,
+                self.tab2,
+                self.tab0,
+                self.tab1,
+                self.tab3,
+                self.tab4,
+                self.tab5,
+            ]
+        )
+        self.content = ft.Row(
+            expand=True,
+            controls=[
+                self.leftTabChBar,
+                self.rgtTabs,
+            ]
+        )
+
+    def set_init(self):
+        self.leftTabChBar.set_tabBtn_on_click(self._left_tabBtn_event)
+
+    def tab_change(self, to_tab_idx:en.TabIdx):
+        for _tab in self.rgtTabs.controls:
+            if not isinstance(_tab, Rgt_col_TabBase): continue
+            if _tab.tabIdx == to_tab_idx: _tab.visible = True
+            elif _tab.tabIdx == 99: pass
+            elif _tab.tabIdx == 2: pass
+            else: _tab.visible = False
+        self.update()
+    def _left_tabBtn_event(self, e:ft.ControlEvent):
+        if not isinstance(e.control, Left_btn_TabChange): return
+        self.tab_change(e.control.tabIdx)
+        self.update()
+
+#?アプリ終了時の確認ダイアログ。終了時動作はダミー。実装時に上書き必須。
+class App_ExitConfirmDlg(ft.AlertDialog):
+    def __init__(self):
+        super().__init__(
+            modal=True,
+            title=ft.Text("終了確認"),
+            content=ft.Text("アプリを終了しますか？"),
+            actions_alignment=ft.MainAxisAlignment.END
+        )
+        self.actions = [
+            ft.TextButton("Yes", on_click=self.yes_clicked),
+            ft.TextButton("No", on_click=lambda e: self.page.close(self))
+        ]
+
+    def yes_clicked(self, e):
+        raise NameError("このメソッドは実装時に上書きが必須です。")
 
