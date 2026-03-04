@@ -2,7 +2,7 @@ import flet as ft
 import logging
 import os
 from pathlib import Path
-from typing import Optional,List
+from typing import Optional,List,Dict
 import re
 
 import enEnums as en
@@ -12,6 +12,10 @@ import frmInterfaces as itf
 LATEST_VER_TYPE = en.AppVerType.BETA
 LATEST_VER_NUM = 6.0
 ATOMS_SPLIT = "_,_"
+_mgr_cellData:Mgr_CellData
+_mgr_settingData:Mgr_SettingData
+_mgr_filePickers:Mgr_FilePickers
+_app_mainFrame:AppMainFrame
 
 class Mgr_SettingData():
     def __init__(self):
@@ -51,7 +55,7 @@ class Mgr_SettingData():
     def change_setting(self, setting_label:en.SettingLabel, new_value:str):
         if self.settingData[setting_label] == new_value: return
         self.settingData[setting_label] = new_value
-        self._write_setting()
+        self._save_setting()
 
 class Mgr_CellData():
     def __init__(self):
@@ -170,7 +174,64 @@ class Mgr_CellData():
                 f.write(f'{_line}   {self.cellData[_line]}\n')
         self.savedPath = savePath
 
+class Mgr_FilePickers(Dict[en.FilePickerIdx, ft.FilePicker]):
+    def __init__(self):
+        super().__init__()
+        for _name in en.FilePickerIdx:
+            self[_name] = ft.FilePicker()
 
+class Tab0_CIFSelect(itf.Rgt_tab_0_CIFSelect):
+    def __init__(self):
+        super().__init__()
+
+    def set_init(self):
+        self.pickBuilder.set_picker_init(_mgr_filePickers[en.FilePickerIdx.PICK_BUILDER])
+        self.pickCIF.set_picker_init(_mgr_filePickers[en.FilePickerIdx.PICK_CIF])
+        self.pickTXT.set_picker_init(_mgr_filePickers[en.FilePickerIdx.PICK_TXT])
+        self.btmBtns.btnNext.on_click = self.readCIF_event
+        self.btmBtns.btnFunc1.on_click = self.readTXT_event
+
+        setting_exePath = _mgr_settingData.settingData[en.SettingLabel.BUILDER_PATH]
+        setting_cifPath = _mgr_settingData.settingData[en.SettingLabel.CIF_PATH]
+        setting_txtPath = _mgr_settingData.settingData[en.SettingLabel.TXT_PATH]
+        if setting_exePath != "None":
+            self.pickBuilder.path_change(setting_exePath)
+        if setting_cifPath != "None":
+            self.pickCIF.path_change(setting_cifPath)
+        if setting_txtPath != "None":
+            self.pickTXT.path_change(setting_txtPath)
+
+    def readCIF_event(self, e:ft.ControlEvent):
+        pickedEXE_path = self.pickBuilder.pickedPath
+        pickedCIF_path = self.pickCIF.pickedPath
+        if pickedEXE_path is None:
+            raise ValueError("Builder.exe path is not selected.")
+        else:
+            _mgr_settingData.change_setting(en.SettingLabel.BUILDER_PATH, str(pickedEXE_path.resolve()))
+        if pickedCIF_path is None:
+            raise ValueError("CIF path is not selected.")
+        else:
+            _mgr_settingData.change_setting(en.SettingLabel.CIF_PATH, str(pickedCIF_path.resolve()))
+            _mgr_cellData.read_cellData(pickedCIF_path)
+        _app_mainFrame.tab_change(en.TabIdx.CIF_PREVIEW)
+
+    def readTXT_event(self, e:ft.ControlEvent):
+        pickedEXE_path = self.pickBuilder.pickedPath
+        pickedTXT_path = self.pickTXT.pickedPath
+        if pickedEXE_path is None:
+            raise ValueError("Builder.exe path is not selected.")
+        else:
+            _mgr_settingData.change_setting(en.SettingLabel.BUILDER_PATH, str(pickedEXE_path.resolve()))
+        if pickedTXT_path is None:
+            raise ValueError("TXT path is not selected.")
+        else:
+            _mgr_settingData.change_setting(en.SettingLabel.TXT_PATH, str(pickedTXT_path.resolve()))
+            _mgr_cellData.read_cellData(pickedTXT_path)
+        _app_mainFrame.tab_change(en.TabIdx.CIF_PREVIEW)
+
+class Tab1_CIFPreview(itf.Rgt_tab_1_CIFPreview):
+    def __init__(self):
+        super().__init__()
 
 class AppMainFrame(ft.Container):
     def __init__(self):
@@ -179,8 +240,8 @@ class AppMainFrame(ft.Container):
         )
         self.leftTabChBar = itf.Left_box_TabChangeBar()
         self.tab99 = itf.Rgt_tab_99_PlaceHolder()
-        self.tab0 = itf.Rgt_tab_0_CIFSelect()
-        self.tab1 = itf.Rgt_tab_1_CIFPreview()
+        self.tab0 = Tab0_CIFSelect()
+        self.tab1 = Tab1_CIFPreview()
         self.tab2 = itf.Rgt_tab_2_AppLogs()
         self.tab3 = itf.Rgt_tab_3_BuilderResult()
         self.tab4 = itf.Rgt_tab_4_MISelect()
@@ -205,8 +266,11 @@ class AppMainFrame(ft.Container):
             ]
         )
 
+        self.rgtTabs.data = self.tab_change
+
     def set_init(self):
         self.leftTabChBar.set_tabBtn_on_click(self._left_tabBtn_event)
+        self.tab0.set_init()
 
     def tab_change(self, to_tab_idx:en.TabIdx):
         for _tab in self.rgtTabs.controls:
@@ -244,19 +308,32 @@ def main(page: ft.Page):
     page.window.prevent_close = True
     page.window.on_event = window_close_event
 
-    appMainFrame = AppMainFrame()
-    page.add(appMainFrame)
+    _mgr_settingData.read_setting()
+    print(_mgr_settingData.settingData)
+    for _name in _mgr_filePickers:
+        page.overlay.append(_mgr_filePickers[_name])
+    page.update()
+
+    #appMainFrame = AppMainFrame()
+    page.add(_app_mainFrame)
     page.window.center()
     page.update()
 
-    appMainFrame.set_init()
+
+    _app_mainFrame.set_init()
     page.update()
 
 if __name__ == '__main__':
-    #ft.app(target=main)
+    _mgr_cellData = Mgr_CellData()
+    _mgr_settingData = Mgr_SettingData()
+    _mgr_filePickers = Mgr_FilePickers()
+    _app_mainFrame = AppMainFrame()
+    ft.app(target=main)
+    """
     test_mgr_cif = Mgr_CellData()
-    test_mgr_cif.read_cellData(Path("C:\\Users\\asufa\\OneDrive\\デスクトップ\\1006_1h\\MVAuNiUV_autored.cif"))
+    test_mgr_cif.read_cellData(Path("C:\\Users\\asufa\\OneDrive\\ドキュメント\\Python\\MakeCiSupport\\datatext\\outpuuuut.txt"))
     for _line in test_mgr_cif.cellData:
         print(f'{_line} : {test_mgr_cif.cellData[_line]}')
     print(test_mgr_cif.savedPath)
     #print(os.getcwd())
+    """

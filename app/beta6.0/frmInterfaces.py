@@ -114,6 +114,10 @@ class Btm_row_FuncBtns(ft.Row):
             self.btnExit,
             self.btnNext
         ]
+        self.btnExit.on_click = self.exit_event
+
+    def exit_event(self, e:ft.ControlEvent):
+        self.page.window.close()
 
 #*タブのコンテンツたちを配置するためのコンテナ。
 #*以前の構造と違ってこいつには容器としての定義しか持たせてない。
@@ -168,7 +172,7 @@ class Tab_row_FilePickerBar(ft.Row):
         self.pickerIdx = file_picker_idx
         self._fileType = self.pickerIdx.get_file_type()
         self._filePicker:ft.FilePicker
-        self.pickedPath:Path
+        self.pickedPath:Optional[Path] = None
 
         self.txtfPath = ft.TextField(
             expand=9,
@@ -202,10 +206,7 @@ class Tab_row_FilePickerBar(ft.Row):
         self.update()
 
     def _path_error_msg(self):
-        try:
-            del self.pickedPath
-        except:
-            pass
+        self.pickedPath = None
         self.txtfPath.error_text = "is not file"
 
     def _picked_event(self, e:ft.FilePickerResultEvent):
@@ -573,7 +574,6 @@ class App_dict_CellData(Dict[str, str]):
             if ifLbl in self.keys():
                 #self.atomsNum = _n + 1
                 return self[ifLbl]
-
 
 
 class App_list_CellData(List[App_list_CellData_Value]):
