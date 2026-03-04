@@ -1,10 +1,174 @@
 import flet as ft
 import logging
+import os
+from pathlib import Path
+from typing import Optional,List
+import re
 
 import enEnums as en
 import frmInterfaces as itf
 
 
+LATEST_VER_TYPE = en.AppVerType.BETA
+LATEST_VER_NUM = 6.0
+ATOMS_SPLIT = "_,_"
+
+class Mgr_SettingData():
+    def __init__(self):
+        self.settingData = itf.App_dict_Setting()
+        self.PATH_SETTING = Path('./datatext/makeci_setting.txt')
+
+    def read_setting(self):
+        if not self.PATH_SETTING.is_file():
+            self._make_setting_file()
+        with open(self.PATH_SETTING) as f:
+            for _line in f:
+                _lineData = _line.rstrip().split(sep=';')
+                _lineData[1] = ';'.join(_lineData[1:])
+                for _lbl in en.SettingLabel:
+                    if _lbl.value == _lineData[0]:
+                        self.settingData[_lbl] = _lineData[1]
+                        break
+        self._save_setting()
+
+    def _make_setting_file(self):
+        if not Path('./datatext').is_dir():
+            Path.mkdir(Path('./datatext'))
+        self.PATH_SETTING.touch()
+        newSetting = itf.App_dict_Setting()
+        newSetting[en.SettingLabel.APP_VER_TYPE] = LATEST_VER_TYPE.name
+        newSetting[en.SettingLabel.APP_VER_NUM] = str(LATEST_VER_NUM)
+        self._save_setting(newSetting)
+
+    def _save_setting(self, list_setting:Optional[itf.App_dict_Setting]=None):
+        listSetting = list_setting
+        if listSetting is None:
+            listSetting = self.settingData
+        with open(self.PATH_SETTING, mode='w') as f:
+            for _lbl in listSetting:
+                f.write(f'{_lbl.value};{listSetting[_lbl]}\n')
+
+    def change_setting(self, setting_label:en.SettingLabel, new_value:str):
+        if self.settingData[setting_label] == new_value: return
+        self.settingData[setting_label] = new_value
+        self._write_setting()
+
+class Mgr_CellData():
+    def __init__(self):
+        self.cellData = itf.App_dict_CellData()
+        self.DFLT_SAVE_PATH = Path('./datatext/outpuuuut.txt')
+        self.pickedPath:Path
+        self.savedPath:Path
+
+    def _make_dflt_save_file(self):
+        if not Path('./datatext').is_dir():
+            Path.mkdir(Path('./datatext'))
+        self.DFLT_SAVE_PATH.touch()
+
+    #? 今betaからcifファイルとtxtファイル両用に変更。
+    #? cifファイル内の原子座標の配置構造が分かったので一般性を持たせられるかも(2026/3/4現在未対応)
+    def read_cellData(self, pick_path:Path):
+        if not (pick_path.suffix[1:] == 'cif' or pick_path.suffix[1:] =='txt'):
+            raise ValueError(f'{pick_path}\'s suffix is not true')
+        new_cellData = itf.App_dict_CellData()
+        new_cellData[en.CellDataLbl.STATE.value] = "data_reading"
+
+        i = -1
+        atom1stIdx:int
+        atom2ndIdx:int
+        lastAtoms:Optional[str]
+        lastAtoms_detail:List[str]
+        #atomOcc:Optional[str] = None
+        new_atoms:List[str]
+        nearly_atoms = False
+        this_atoms = False
+        exit_count = 0
+        with open(pick_path) as f:
+            for _line in f:
+                i += 1
+                if i > 450: break
+                    #raise IndexError("readline is over.(450 lines)")
+                #if not _line.strip(): continue
+                _line = _line.strip()
+                if not _line: continue
+                #* データ名
+                if re.match('data_.*', _line):
+                    if _line == "data_xcalibur":
+                        raise ValueError("This file is not compleat by Olex2.")
+                    elif 'data_name' in _line:
+                        _line = ' '.join(_line.split()[1:])
+                    new_cellData[en.CellDataLbl.DATA_NAME.value] = _line.lstrip("data_")
+                    continue
+                #* 格子データ
+                _lineData = _line.split()
+                if _lineData[0] in en.CellDataLbl:
+                    valueData = '_'.join(_lineData[1:])
+                    valueData.strip("'")
+                    valueData = re.sub(r"\(\d+\)", "", valueData)
+                    new_cellData[_lineData[0]] = valueData
+                    continue
+                #* cifファイル用原子座標
+                if nearly_atoms or "_atom_site_fract_z" in _line:
+                    nearly_atoms = True
+                    if len(_lineData) >= 4:
+                        #print(_lineData)
+                        this_atoms = True
+                        exit_count = 0
+                        #_lineData[0] = re.sub(r'\d+', '', _lineData[0])
+                        lastAtoms = new_cellData.get_last_atom()
+                        if lastAtoms is None:
+                            atom1stIdx = 1
+                            atom2ndIdx = 1
+                        else:
+                            lastAtoms_detail = lastAtoms.split(ATOMS_SPLIT)
+                            if _lineData[1] == lastAtoms_detail[0]:
+                                atom1stIdx = int(lastAtoms_detail[1])
+                                atom2ndIdx = int(lastAtoms_detail[2]) + 1
+                            else:
+                                atom1stIdx = int(lastAtoms_detail[1]) + 1
+                                atom2ndIdx = 1
+                        #if 'Uani' in _lineData:
+                        new_atoms = [
+                            _lineData[1], str(atom1stIdx), str(atom2ndIdx), re.sub(r"\(\d+\)","", _lineData[2]),
+                            re.sub(r"\(\d+\)", "", _lineData[3]), re.sub(r"\(\d+\)", "", _lineData[4]),
+                            ]
+                        if _lineData[7] != '1':
+                            new_atoms.append(re.sub(r"\(\d+\)", "", _lineData[7]))
+                            #atomOcc = _lineData[_lineData.index('Uani')+1]
+                        new_cellData[en.CellDataLbl.ATOMS.value] = ATOMS_SPLIT.join(new_atoms)
+                        continue
+                    else:
+                        exit_count += 1
+                    if this_atoms and exit_count >= 2: break
+                #* txtファイル用原子座標
+                if re.match(r'atoms#\d+', _lineData[0]):
+                    new_cellData[en.CellDataLbl.ATOMS.value] = _lineData[1]
+                    continue
+        new_cellData[en.CellDataLbl.STATE.value] = "data_picked"
+        self.cellData = new_cellData
+        self.save_cellData()
+        print(f'end_line:{i}')
+
+    def save_cellData(self, save_path:Optional[Path]=None):
+        savePath = save_path
+        if self.cellData[en.CellDataLbl.STATE.value] != 'data_picked':
+            raise ValueError("cellData is not picked.")
+        if savePath is None:
+            savePath = self.DFLT_SAVE_PATH
+            if not savePath.is_file():
+                self._make_dflt_save_file()
+        else:
+            if savePath.is_file():
+                if savePath.suffix[1:] != "txt":
+                    raise ValueError("This path's suffix is not true.")
+            else:
+                raise ValueError("This path is not complete.")
+        with open(savePath, mode='w') as f:
+            f.write("MakeCi_output\n")
+            for _line in self.cellData:
+                if _line == en.CellDataLbl.STATE.value: continue
+                f.write(f'{_line}   {self.cellData[_line]}\n')
+        self.savedPath = savePath
 
 
 
@@ -89,4 +253,10 @@ def main(page: ft.Page):
     page.update()
 
 if __name__ == '__main__':
-    ft.app(target=main)
+    #ft.app(target=main)
+    test_mgr_cif = Mgr_CellData()
+    test_mgr_cif.read_cellData(Path("C:\\Users\\asufa\\OneDrive\\デスクトップ\\1006_1h\\MVAuNiUV_autored.cif"))
+    for _line in test_mgr_cif.cellData:
+        print(f'{_line} : {test_mgr_cif.cellData[_line]}')
+    print(test_mgr_cif.savedPath)
+    #print(os.getcwd())

@@ -51,18 +51,30 @@ class FilePickerIdx(Enum):
             case 'PICK_GJF': return "gjf"
             case 'SAVE_GJF': return "gjf"
 
-class CellDataLabel(Enum):
+class CellDataLbl(Enum):
     STATE = "state"
     DATA_NAME = "data_name"
-    SPACE_G_IT_NUM = "space_group_IT_number"
-    SPACE_G_NAME = "space_group_name_H-M_alt"
-    CELL_LEN_A = "cell_length_a"
-    CELL_LEN_B = "cell_length_b"
-    CELL_LEN_C = "cell_length_c"
-    CELL_ANGLE_A = "cell_angle_alpha"
-    CELL_ANGLE_B = "cell_angle_beta"
-    CELL_ANGLE_C = "cell_angle_gamma"
-    CELL_VOLUME = "cell_volume"
+    SPACE_G_IT_NUM = "_space_group_IT_number"
+    SPACE_G_NAME = "_space_group_name_H-M_alt"
+    CELL_LEN_A = "_cell_length_a"
+    CELL_LEN_B = "_cell_length_b"
+    CELL_LEN_C = "_cell_length_c"
+    CELL_ANGLE_A = "_cell_angle_alpha"
+    CELL_ANGLE_B = "_cell_angle_beta"
+    CELL_ANGLE_C = "_cell_angle_gamma"
+    CELL_VOLUME = "_cell_volume"
     ATOMS = "atoms"
 
+class SettingLabel(Enum):
+    APP_VER_TYPE = "app_ver_type"
+    APP_VER_NUM = "app_ver_num"
+    BUILDER_PATH = "builder_path"
+    CIF_PATH = "cif_path"
+    TXT_PATH = "txt_path"
+    MI_PATH = "mi_path"
+    GJF_BASE_PATH = "gjf_base_path"
 
+class AppVerType(IntEnum):
+    ALPHA = 0
+    BETA = 3
+    RELEASE = 10

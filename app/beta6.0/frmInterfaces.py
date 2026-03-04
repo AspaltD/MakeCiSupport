@@ -1,5 +1,5 @@
 import flet as ft
-from typing import List,Dict
+from typing import List,Dict,Optional
 from pathlib import Path
 import os
 from logging import LogRecord, Handler
@@ -255,7 +255,7 @@ class Rgt_tab_0_CIFSelect(Rgt_col_TabBase):
 
 #?タブ1の格子情報用のテキストフィールド。
 class Tab_txtf_CellData(ft.TextField):
-    def __init__(self, cell_data_lbl:en.CellDataLabel, expand:int=1, read_only:bool=True):
+    def __init__(self, cell_data_lbl:en.CellDataLbl, expand:int=1, read_only:bool=True):
         super().__init__(
             expand=expand,
             dense=True,
@@ -268,16 +268,16 @@ class Tab_txtf_CellData(ft.TextField):
 class Rgt_tab_1_CIFPreview(Rgt_col_TabBase):
     def __init__(self):
         super().__init__(tab_idx=en.TabIdx.CIF_PREVIEW)
-        self.dataName = Tab_txtf_CellData(en.CellDataLabel.DATA_NAME, read_only=False)
-        self.spaceGItNum = Tab_txtf_CellData(en.CellDataLabel.SPACE_G_IT_NUM)
-        self.spaceGName = Tab_txtf_CellData(en.CellDataLabel.SPACE_G_NAME)
-        self.cellLenA = Tab_txtf_CellData(en.CellDataLabel.CELL_LEN_A)
-        self.cellLenB = Tab_txtf_CellData(en.CellDataLabel.CELL_LEN_B)
-        self.cellLenC = Tab_txtf_CellData(en.CellDataLabel.CELL_LEN_C)
-        self.cellAngleA = Tab_txtf_CellData(en.CellDataLabel.CELL_ANGLE_A)
-        self.cellAngleB = Tab_txtf_CellData(en.CellDataLabel.CELL_ANGLE_B)
-        self.cellAngleC = Tab_txtf_CellData(en.CellDataLabel.CELL_ANGLE_C)
-        self.cellVolume = Tab_txtf_CellData(en.CellDataLabel.CELL_VOLUME)
+        self.dataName = Tab_txtf_CellData(en.CellDataLbl.DATA_NAME, read_only=False)
+        self.spaceGItNum = Tab_txtf_CellData(en.CellDataLbl.SPACE_G_IT_NUM)
+        self.spaceGName = Tab_txtf_CellData(en.CellDataLbl.SPACE_G_NAME)
+        self.cellLenA = Tab_txtf_CellData(en.CellDataLbl.CELL_LEN_A)
+        self.cellLenB = Tab_txtf_CellData(en.CellDataLbl.CELL_LEN_B)
+        self.cellLenC = Tab_txtf_CellData(en.CellDataLbl.CELL_LEN_C)
+        self.cellAngleA = Tab_txtf_CellData(en.CellDataLbl.CELL_ANGLE_A)
+        self.cellAngleB = Tab_txtf_CellData(en.CellDataLbl.CELL_ANGLE_B)
+        self.cellAngleC = Tab_txtf_CellData(en.CellDataLbl.CELL_ANGLE_C)
+        self.cellVolume = Tab_txtf_CellData(en.CellDataLbl.CELL_VOLUME)
         self.tabItems = [
             self.dataName, self.spaceGItNum, self.spaceGName, self.cellLenA,
             self.cellLenB, self.cellLenC, self.cellAngleA, self.cellAngleB,
@@ -544,9 +544,37 @@ class App_ExitConfirmDlg(ft.AlertDialog):
 
 
 class App_list_CellData_Value():
-    def __init__(self, cell_data_label:en.CellDataLabel, value:str):
+    def __init__(self, cell_data_label:en.CellDataLbl, value:str):
         self.LABEL = cell_data_label
         self.VALUE = value
+
+class App_dict_CellData(Dict[str, str]):
+    def __init__(self):
+        super().__init__()
+        self.atomsNum = 0
+        self[en.CellDataLbl.STATE.value] = 'initialized'
+
+    def __setitem__(self, key: str, value: str):
+        if not key in en.CellDataLbl: raise ValueError(f'{key} is not in Enum_CellDataLbl.')
+        if not key == en.CellDataLbl.ATOMS.value:
+            super().__setitem__(key, value)
+        else:
+            self.atomsNum += 1
+            super().__setitem__(f'{key}#{self.atomsNum}', value)
+
+    def clear(self):
+        super().clear()
+        self.__init__()
+
+    def get_last_atom(self) -> Optional[str]:
+        for _n in range(self.atomsNum, -1, -1):
+            if self.atomsNum <= 0: return None
+            ifLbl = f'atoms#{_n}'
+            if ifLbl in self.keys():
+                #self.atomsNum = _n + 1
+                return self[ifLbl]
+
+
 
 class App_list_CellData(List[App_list_CellData_Value]):
     def __init__(self):
@@ -555,7 +583,7 @@ class App_list_CellData(List[App_list_CellData_Value]):
     def append(self, object: App_list_CellData_Value):
         for _data in self:
             if object.LABEL == _data.LABEL:
-                if object.LABEL == en.CellDataLabel.ATOMS:
+                if object.LABEL == en.CellDataLbl.ATOMS:
                     if object.VALUE == _data.VALUE:
                         self.remove(_data)
                         break
@@ -564,20 +592,37 @@ class App_list_CellData(List[App_list_CellData_Value]):
                     break
         super().append(object)
 
-    def append_value(self, cell_data_label:en.CellDataLabel, value:str):
+    def append_value(self, cell_data_label:en.CellDataLbl, value:str):
         self.append(App_list_CellData_Value(cell_data_label, value))
 
-    def get_value(self, cell_data_label:en.CellDataLabel) -> App_list_CellData_Value:
+    def get_value(self, cell_data_label:en.CellDataLbl) -> App_list_CellData_Value:
         for _value in self:
             if _value.LABEL == cell_data_label:
                 return _value
         raise IndexError(f'{cell_data_label} is not in this list.')
 
+class App_dict_Setting(Dict[en.SettingLabel, str]):
+    def __init__(self):
+        for _lbl in en.SettingLabel:
+            self[_lbl] = "None"
+
+    def __delitem__(self, key: en.SettingLabel):
+        super().__setitem__(key, "None")
+
+    def clear(self):
+        self.__init__()
+
+
 if __name__ == '__main__':
-    test_filedata = App_list_CellData()
-    test_filedata.append_value(en.CellDataLabel.STATE, "test")
-    for _data in test_filedata:
-        print(f'{_data.LABEL.value}:{_data.VALUE}')
-    test_filedata.append_value(en.CellDataLabel.STATE, "teeeest")
-    for _data in test_filedata:
-        print(f'{_data.LABEL.value}:{_data.VALUE}')
+    #test_filedata = App_dict_CellData()
+    #test_filedata[en.CellDataLbl.CELL_VOLUME.value] = "1990.3"
+    #test_filedata['atoms'] = "C--0.001"
+    #print(test_filedata)
+    #if "atoms" == en.CellDataLbl.ATOMS.value: print("atoms_here")
+
+    test_setting = App_dict_Setting()
+    print(test_setting)
+    test_setting[en.SettingLabel.APP_VER_NUM] = "6.0"
+    print(test_setting)
+    test_setting.clear()
+    print(test_setting)
