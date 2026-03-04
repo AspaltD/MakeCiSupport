@@ -136,7 +136,9 @@ class Mgr_CellData():
                             _lineData[1], str(atom1stIdx), str(atom2ndIdx), re.sub(r"\(\d+\)","", _lineData[2]),
                             re.sub(r"\(\d+\)", "", _lineData[3]), re.sub(r"\(\d+\)", "", _lineData[4]),
                             ]
-                        if _lineData[7] != '1':
+                        if _lineData[7] == '1':
+                            new_atoms.append("-")
+                        else:
                             new_atoms.append(re.sub(r"\(\d+\)", "", _lineData[7]))
                             #atomOcc = _lineData[_lineData.index('Uani')+1]
                         new_cellData[en.CellDataLbl.ATOMS.value] = ATOMS_SPLIT.join(new_atoms)
@@ -213,6 +215,7 @@ class Tab0_CIFSelect(itf.Rgt_tab_0_CIFSelect):
         else:
             _mgr_settingData.change_setting(en.SettingLabel.CIF_PATH, str(pickedCIF_path.resolve()))
             _mgr_cellData.read_cellData(pickedCIF_path)
+            _app_mainFrame.tab1.insert_cell_data()
         _app_mainFrame.tab_change(en.TabIdx.CIF_PREVIEW)
 
     def readTXT_event(self, e:ft.ControlEvent):
@@ -227,11 +230,90 @@ class Tab0_CIFSelect(itf.Rgt_tab_0_CIFSelect):
         else:
             _mgr_settingData.change_setting(en.SettingLabel.TXT_PATH, str(pickedTXT_path.resolve()))
             _mgr_cellData.read_cellData(pickedTXT_path)
+            _app_mainFrame.tab1.insert_cell_data()
         _app_mainFrame.tab_change(en.TabIdx.CIF_PREVIEW)
 
 class Tab1_CIFPreview(itf.Rgt_tab_1_CIFPreview):
     def __init__(self):
         super().__init__()
+        self.selectedRows:List[str] = []
+        self.saveFPicker:ft.FilePicker
+        self.savedPath:Path
+
+    def set_init(self):
+        self.saveFPicker = _mgr_filePickers[en.FilePickerIdx.SAVE_TXT]
+        self.dataName.on_blur = self.txtf_dataName_on_blur
+
+        self.btmBtns.btnNext.on_click = self.save_go_cellData_event
+        self.btmBtns.btnFunc1.on_click = self.save_func1_cellData_event
+        self.btmBtns.btnFunc2.on_click = self.row_selected_clear_event
+
+    def insert_cell_data(self):
+        cellData = _mgr_cellData.cellData
+        if cellData[en.CellDataLbl.STATE.value] != "data_picked":
+            raise ValueError("This cellData is not picked.")
+        self.atomsTable.rows.clear()
+        table_row:ft.DataRow
+        for _lbl in cellData:
+            if re.match(r'atoms#\d+', _lbl):
+                table_row = ft.DataRow(cells=[], data=_lbl, on_select_changed=self.row_select_event)
+                for _data in cellData[_lbl].split(ATOMS_SPLIT):
+                    table_row.cells.append(ft.DataCell(ft.Text(value=_data)))
+                self.atomsTable.rows.append(table_row)
+                continue
+            for _txtf in self.tabItems:
+                if not isinstance(_txtf, itf.Tab_txtf_CellData): continue
+                if _lbl == _txtf.cellDataLbl.value:
+                    _txtf.value = cellData[_lbl]
+                    break
+        self.update()
+
+
+    def row_select_event(self, e:ft.ControlEvent):
+        clicked_row = e.control
+        if not isinstance(clicked_row, ft.DataRow): pass
+        else:
+            if clicked_row.selected:
+                if clicked_row.data in self.selectedRows:
+                    self.selectedRows.remove(clicked_row.data)
+            else:
+                self.selectedRows.append(clicked_row.data)
+            clicked_row.selected = not clicked_row.selected
+        print(self.selectedRows)
+        self.update()
+
+    def txtf_dataName_on_blur(self, e:ft.ControlEvent):
+        txtf_value = e.control.value
+        if txtf_value is None or txtf_value.strip() is False:
+            if _mgr_cellData.cellData[en.CellDataLbl.STATE.value] == "data_picked":
+                txtf_value = _mgr_cellData.cellData[en.CellDataLbl.DATA_NAME.value]
+            else:
+                txtf_value = ''
+        else:
+            _mgr_cellData.cellData[en.CellDataLbl.DATA_NAME.value] = txtf_value
+        self.update()
+
+    def row_selected_clear_event(self, e:ft.ControlEvent):
+        if len(self.atomsTable.rows) == 0: return
+        for _delLbl in self.selectedRows:
+            for _row in self.atomsTable.rows:
+                if _row.data == _delLbl:
+                    self.atomsTable.rows.remove(_row)
+        self.update()
+
+    def commit_cellData(self):
+        pass
+
+    def pick_files_result(self, e:ft.FilePickerResultEvent):
+        pass
+
+    def save_func1_cellData_event(self, e:ft.ControlEvent):
+        pass
+
+    def save_go_cellData_event(self, e:ft.ControlEvent):
+        pass
+
+
 
 class AppMainFrame(ft.Container):
     def __init__(self):
@@ -271,6 +353,7 @@ class AppMainFrame(ft.Container):
     def set_init(self):
         self.leftTabChBar.set_tabBtn_on_click(self._left_tabBtn_event)
         self.tab0.set_init()
+        self.tab1.set_init()
 
     def tab_change(self, to_tab_idx:en.TabIdx):
         for _tab in self.rgtTabs.controls:
