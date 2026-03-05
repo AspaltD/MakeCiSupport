@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from typing import Optional,List,Dict
 import re
+import copy
 
 import enEnums as en
 import frmInterfaces as itf
@@ -60,6 +61,7 @@ class Mgr_SettingData():
 class Mgr_CellData():
     def __init__(self):
         self.cellData = itf.App_dict_CellData()
+        self.last_cellData:itf.App_dict_CellData
         self.DFLT_SAVE_PATH = Path('./datatext/outpuuuut.txt')
         self.pickedPath:Path
         self.savedPath:Path
@@ -176,6 +178,19 @@ class Mgr_CellData():
                 f.write(f'{_line}   {self.cellData[_line]}\n')
         self.savedPath = savePath
 
+    def commit_save_cellData(self, new_cellData:itf.App_dict_CellData, save_path:Optional[Path]=None):
+        if new_cellData[en.CellDataLbl.STATE.value] != 'data_picked':
+            raise ValueError("cellData is not picked.")
+        #self.last_cellData = itf.App_dict_CellData()
+        #for _lbl in self.cellData:
+        #    if 'atoms' in _lbl:
+        #        self.last_cellData['atoms'] = copy.deepcopy(self.cellData[_lbl])
+        #    self.last_cellData[copy.deepcopy(_lbl)] = copy.deepcopy(self.cellData[_lbl])
+        self.last_cellData = copy.deepcopy(self.cellData)
+        self.cellData = new_cellData
+        print("saved")
+        self.save_cellData(save_path)
+
 class Mgr_FilePickers(Dict[en.FilePickerIdx, ft.FilePicker]):
     def __init__(self):
         super().__init__()
@@ -242,6 +257,7 @@ class Tab1_CIFPreview(itf.Rgt_tab_1_CIFPreview):
 
     def set_init(self):
         self.saveFPicker = _mgr_filePickers[en.FilePickerIdx.SAVE_TXT]
+        self.saveFPicker.on_result = self.pick_files_result
         self.dataName.on_blur = self.txtf_dataName_on_blur
 
         self.btmBtns.btnNext.on_click = self.save_go_cellData_event
@@ -301,18 +317,50 @@ class Tab1_CIFPreview(itf.Rgt_tab_1_CIFPreview):
                     self.atomsTable.rows.remove(_row)
         self.update()
 
-    def commit_cellData(self):
-        pass
+    def commit_cellData(self, save_path:Optional[Path]=None):
+        if self.dataName.value is None:
+            raise ValueError("This tab's data is not completed.")
+        commit_cellData = itf.App_dict_CellData()
+        commit_cellData[en.CellDataLbl.STATE.value] = "data_picked"
+        for _txtf in self.tabItems:
+            if not isinstance(_txtf, itf.Tab_txtf_CellData): continue
+            #if _txtf.cellDataLbl.value in commit_cellData:
+            #    print(_txtf.value)
+            commit_cellData[_txtf.cellDataLbl.value] = _txtf.value
+        for _row in self.atomsTable.rows:
+            atoms_value:List[str] = []
+            for _cell in _row.cells:
+                atoms_value.append(_cell.content.value)
+            commit_cellData[en.CellDataLbl.ATOMS.value] = ATOMS_SPLIT.join(atoms_value)
+        _mgr_cellData.commit_save_cellData(commit_cellData, save_path)
 
     def pick_files_result(self, e:ft.FilePickerResultEvent):
-        pass
+        if e.path:
+            if re.match('.*txt',e.path):
+                self.savedPath = Path(e.path)
+            else:
+                self.savedPath = Path(e.path+".txt")
+            self.savedPath.touch()
+            print(self.savedPath)
+            self.commit_cellData(self.savedPath)
+        self.update()
 
     def save_func1_cellData_event(self, e:ft.ControlEvent):
-        pass
+        if self.dataName.value is None or self.dataName.value == '':
+            raise ValueError("This tab's data is not completed.")
+        self.saveFPicker.save_file(
+            allowed_extensions=['txt'],
+            file_name=self.dataName.value
+        )
+        self.update()
 
     def save_go_cellData_event(self, e:ft.ControlEvent):
         pass
 
+
+class Tab3_BuilderResult(itf.Rgt_tab_3_BuilderResult):
+    def __init__(self):
+        super().__init__()
 
 
 class AppMainFrame(ft.Container):

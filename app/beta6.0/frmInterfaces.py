@@ -447,6 +447,11 @@ class Rgt_tab_3_BuilderResult(Rgt_col_TabBase):
                 case 'OTHER_FUNC2':
                     _btmBtn.visible = False
 
+    def txtf_value_clear(self):
+        self.txtf_cifName.value = ''
+        self.txtf_savePath.value = ''
+        self.txtf_runtime.value = ''
+
 
 #*タブ4。GJF作成用のMIファイル選択と基礎となるGJFの選択
 class Rgt_tab_4_MISelect(Rgt_col_TabBase):
@@ -556,12 +561,13 @@ class App_dict_CellData(Dict[str, str]):
         self[en.CellDataLbl.STATE.value] = 'initialized'
 
     def __setitem__(self, key: str, value: str):
-        if not key in en.CellDataLbl: raise ValueError(f'{key} is not in Enum_CellDataLbl.')
-        if not key == en.CellDataLbl.ATOMS.value:
-            super().__setitem__(key, value)
-        else:
+        if key == en.CellDataLbl.ATOMS.value or 'atoms' in key:
             self.atomsNum += 1
-            super().__setitem__(f'{key}#{self.atomsNum}', value)
+            super().__setitem__(f'{en.CellDataLbl.ATOMS.value}#{self.atomsNum}', value)
+        else:
+            if not key in en.CellDataLbl: raise ValueError(f'{key} is not in Enum_CellDataLbl.')
+            super().__setitem__(key, value)
+
 
     def clear(self):
         super().clear()
