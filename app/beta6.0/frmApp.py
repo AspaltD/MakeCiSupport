@@ -206,10 +206,10 @@ class Mgr_GJFData():
     def set_init(self):
         if not self.DFLT_BASE_GJF_PATH.is_file():
             self._make_dflt_base_gjf_file()
-        if _mgr_settingData.settingData[en.SettingLabel.GJF_BASE_PATH] == "None":
-            base_gjf_path = self.DFLT_BASE_GJF_PATH
-        else:
-            base_gjf_path = Path(_mgr_settingData.settingData[en.SettingLabel.GJF_BASE_PATH])
+        #if _mgr_settingData.settingData[en.SettingLabel.GJF_BASE_PATH] == "None":
+        base_gjf_path = self.DFLT_BASE_GJF_PATH
+        #else:
+        #    base_gjf_path = Path(_mgr_settingData.settingData[en.SettingLabel.GJF_BASE_PATH])
         self.read_base_gjf(base_gjf_path)
         #print(self.base_gjfData)
 

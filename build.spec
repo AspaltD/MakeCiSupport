@@ -7,8 +7,8 @@ add_datas = [
 ]
 
 a = Analysis(
-    ['app/frmAppWindow.py'],
-    pathex=['app'],
+    ['app/beta6.0/frmApp.py'],
+    pathex=['app/beta6.0'],
     binaries=[],
     datas=add_datas,
     hiddenimports=[],
