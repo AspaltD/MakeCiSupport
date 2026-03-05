@@ -583,8 +583,6 @@ class App_dict_CellData(Dict[str, str]):
                 atoms_list.append(self[_lbl])
         return atoms_list
 
-
-
 class App_dict_Setting(Dict[en.SettingLabel, str]):
     def __init__(self):
         for _lbl in en.SettingLabel:
@@ -596,6 +594,13 @@ class App_dict_Setting(Dict[en.SettingLabel, str]):
     def clear(self):
         self.__init__()
 
+class App_List_GJFData(List[str]):
+    def __init__(self):
+        super().__init__()
+
+    def append(self, object: str) -> None:
+        #super().append(f'"{object}"')
+        super().append(object)
 
 if __name__ == '__main__':
     #test_filedata = App_dict_CellData()
@@ -604,9 +609,8 @@ if __name__ == '__main__':
     #print(test_filedata)
     #if "atoms" == en.CellDataLbl.ATOMS.value: print("atoms_here")
 
-    test_setting = App_dict_Setting()
-    print(test_setting)
-    test_setting[en.SettingLabel.APP_VER_NUM] = "6.0"
-    print(test_setting)
-    test_setting.clear()
-    print(test_setting)
+    test_ = App_List_GJFData()
+    test_.append('\n')
+    print(test_)
+    test2 = ["\n"]
+    print(test2)

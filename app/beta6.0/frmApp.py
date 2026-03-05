@@ -17,6 +17,7 @@ ATOMS_SPLIT = "_,_"
 _mgr_cellData:Mgr_CellData
 _mgr_settingData:Mgr_SettingData
 _mgr_filePickers:Mgr_FilePickers
+_mgr_gjfData:Mgr_GJFData
 _app_mainFrame:AppMainFrame
 
 class Mgr_SettingData():
@@ -167,11 +168,11 @@ class Mgr_CellData():
             if not savePath.is_file():
                 self._make_dflt_save_file()
         else:
-            if savePath.is_file():
-                if savePath.suffix[1:] != "txt":
-                    raise ValueError("This path's suffix is not true.")
-            else:
-                raise ValueError("This path is not complete.")
+            #if savePath.is_file():
+            if savePath.suffix[1:] != "txt":
+                raise ValueError("This path's suffix is not true.")
+            #else:
+            #    raise ValueError("This path is not complete.")
         with open(savePath, mode='w') as f:
             f.write("MakeCi_output\n")
             for _line in self.cellData:
@@ -192,6 +193,95 @@ class Mgr_FilePickers(Dict[en.FilePickerIdx, ft.FilePicker]):
         super().__init__()
         for _name in en.FilePickerIdx:
             self[_name] = ft.FilePicker()
+
+class Mgr_GJFData():
+    def __init__(self):
+        self.DFLT_BASE_GJF_PATH = Path("./datatext/default.gjf")
+        self.DFLT_SAVE_GJF_PATH = Path("./datatext/outpuuuut.gjf")
+        self.base_gjfData:itf.App_List_GJFData
+        self.saved_gjfData:itf.App_List_GJFData
+        self.saved_path:Path
+        self.picked_mi_path:Path
+
+    def set_init(self):
+        if not self.DFLT_BASE_GJF_PATH.is_file():
+            self._make_dflt_base_gjf_file()
+        if _mgr_settingData.settingData[en.SettingLabel.GJF_BASE_PATH] == "None":
+            base_gjf_path = self.DFLT_BASE_GJF_PATH
+        else:
+            base_gjf_path = Path(_mgr_settingData.settingData[en.SettingLabel.GJF_BASE_PATH])
+        self.read_base_gjf(base_gjf_path)
+        #print(self.base_gjfData)
+
+    def _make_dflt_base_gjf_file(self):
+        if not Path('./datatext').is_dir():
+            Path.mkdir(Path('./datatext'))
+        self.DFLT_BASE_GJF_PATH.touch()
+        self.DFLT_SAVE_GJF_PATH.touch()
+        self.base_gjfData = itf.App_List_GJFData()
+        self.base_gjfData.append("%chk=C:/Users/Owner/Desktop/Data/Yoshida/def/default.chk")
+        self.base_gjfData.append("# wb97xd/lanl2dz pop=full geom=connectivity")
+        self.base_gjfData.append("\n")
+        self.base_gjfData.append("Title Card Required")
+        self.base_gjfData.append("\n")
+        self.base_gjfData.append("0 1")
+        self.save_gjf_data(self.DFLT_BASE_GJF_PATH)
+
+    def save_gjf_data(self, save_gjf_path:Optional[Path]=None):
+        save_path = save_gjf_path
+        if save_path is None:
+            save_path = self.DFLT_SAVE_GJF_PATH
+        else:
+            if save_path.suffix[1:] != "gjf":
+                raise ValueError("This path's suffix is not true.")
+        with open(save_path, mode='w') as f:
+            for _line in self.saved_gjfData:
+                f.write(f'{_line}\n')
+        self.saved_Path = save_path
+
+    def read_base_gjf(self, base_gjf_path:Optional[Path]=None):
+        read_path = base_gjf_path
+        if read_path is None:
+            read_path = self.DFLT_BASE_GJF_PATH
+        else:
+            if read_path.suffix[1:] != "gjf":
+                raise ValueError("This path's suffix is not true.")
+        self.base_gjfData = itf.App_List_GJFData()
+        with open(read_path) as f:
+            for _line in f:
+                _line = _line.rstrip()
+                self.base_gjfData.append(_line)
+                if len(self.base_gjfData) >= 6: break
+
+    def read_mi_to_gjf(self, read_mi_path:Path):
+        mi_path = read_mi_path
+        if not mi_path.is_file():
+            raise ValueError("This mi path is not true.")
+        if mi_path.suffix[1:] != "mi":
+            raise ValueError("This path's suffix is not true.")
+        if len(self.base_gjfData) <= 4:
+            self.read_base_gjf()
+        self.picked_mi_path = mi_path
+        self.saved_gjfData = copy.deepcopy(self.base_gjfData)
+        i = -1
+        with open(mi_path) as f:
+            for _line in f:
+                i += 1
+                _line = _line.strip()
+                if not _line: continue
+                if i >= 450:
+                    raise IndexError("readline is over.(450 lines)")
+                _line_value = _line.split()
+                if _line_value[0] != "POS": continue
+                _line_value[1] = _line_value[1].split(sep='-')[0]
+                if len(_line_value[1]) < 2:
+                    _line_value[1] += '_'
+                for _n in range(2, 5):
+                    while len(_line_value[_n]) < 10:
+                        _line_value[_n] = '_' + _line_value[_n]
+                _line_value_comp = '  '.join(_line_value[1:])
+                self.saved_gjfData.append(_line_value_comp.replace('_', ' '))
+
 
 class Tab0_CIFSelect(itf.Rgt_tab_0_CIFSelect):
     def __init__(self):
@@ -360,6 +450,88 @@ class Tab3_BuilderResult(itf.Rgt_tab_3_BuilderResult):
     def __init__(self):
         super().__init__()
 
+class Tab4_MISelect(itf.Rgt_tab_4_MISelect):
+    def __init__(self):
+        super().__init__()
+
+    def set_init(self):
+        self.pickGJF.set_picker_init(_mgr_filePickers[en.FilePickerIdx.PICK_GJF])
+        self.pickMI.set_picker_init(_mgr_filePickers[en.FilePickerIdx.PICK_MI])
+        self.pickGJF._filePicker.on_result = self._gjfPicker_picked_event
+        self.btmBtns.btnNext.on_click = self.read_mi_event
+
+    def _gjfPicker_picked_event(self, e:ft.FilePickerResultEvent):
+        if e.files: self.pickGJF.path_change(e.files[0].path)
+        _mgr_gjfData.read_base_gjf(self.pickGJF.pickedPath)
+        self.listV_baseGJF.controls = []
+        for _line in _mgr_gjfData.base_gjfData:
+            self.listV_baseGJF.controls.append(
+                ft.TextField(
+                    value=_line,
+                    read_only=True,
+                    dense=True,
+                    border=ft.InputBorder.NONE
+                )
+            )
+        self.update()
+
+    def read_mi_event(self, e:ft.ControlEvent):
+        pickedMI_path = self.pickMI.pickedPath
+        pickedGJF_path = self.pickGJF.pickedPath
+        if pickedGJF_path is None:
+            raise ValueError("Base_GJF path is not selected.")
+        else:
+            _mgr_settingData.change_setting(en.SettingLabel.GJF_BASE_PATH, str(pickedGJF_path.resolve()))
+        if pickedMI_path is None:
+            raise ValueError("MI path is not selected.")
+        else:
+            _mgr_settingData.change_setting(en.SettingLabel.MI_PATH, str(pickedMI_path.resolve()))
+            _mgr_gjfData.read_mi_to_gjf(pickedMI_path)
+            _mgr_gjfData.save_gjf_data()
+            _app_mainFrame.tab5.ins_gjf_preview()
+        _app_mainFrame.tab_change(en.TabIdx.GJF_PREVIEW)
+
+class Tab5_GJFPreview(itf.Rgt_tab_5_GJFPreview):
+    def __init__(self):
+        super().__init__()
+        self.saveFPicker_gjf:ft.FilePicker
+        self.savedPath_gjf:Path
+
+    def set_init(self):
+        self.saveFPicker_gjf = _mgr_filePickers[en.FilePickerIdx.SAVE_GJF]
+        self.saveFPicker_gjf.on_result = self._pick_files_result
+        self.btmBtns.btnNext.on_click = self._save_next_gjfData_event
+
+    def ins_gjf_preview(self):
+        self.listV_GJFPre.controls.clear()
+        for _line in _mgr_gjfData.saved_gjfData:
+            self.listV_GJFPre.controls.append(
+                ft.TextField(
+                    value=_line,
+                    read_only=True,
+                    dense=True,
+                    border=ft.InputBorder.NONE
+                )
+            )
+
+    def _pick_files_result(self, e:ft.FilePickerResultEvent):
+        if e.path:
+            if re.match('.*gjf', e.path):
+                gjfPath = Path(e.path)
+            else:
+                gjfPath = Path(e.path+".gjf")
+            _mgr_gjfData.save_gjf_data(gjfPath)
+            self.savedPath_gjf = gjfPath
+        self.update()
+
+    def _save_next_gjfData_event(self, e:ft.ControlEvent):
+        if len(self.listV_GJFPre.controls) == 0:
+            raise ValueError("There are non gjf data.")
+        self.saveFPicker_gjf.save_file(
+            allowed_extensions=['gjf'],
+            file_name=_mgr_gjfData.picked_mi_path.stem
+        )
+
 
 class AppMainFrame(ft.Container):
     def __init__(self):
@@ -373,8 +545,8 @@ class AppMainFrame(ft.Container):
         self.tab1 = Tab1_CIFPreview()
         self.tab2 = itf.Rgt_tab_2_AppLogs()
         self.tab3 = itf.Rgt_tab_3_BuilderResult()
-        self.tab4 = itf.Rgt_tab_4_MISelect()
-        self.tab5 = itf.Rgt_tab_5_GJFPreview()
+        self.tab4 = Tab4_MISelect()
+        self.tab5 = Tab5_GJFPreview()
         self.rgtTabs = ft.Stack(
             expand=3,
             controls=[
@@ -401,6 +573,8 @@ class AppMainFrame(ft.Container):
         self.leftTabChBar.set_tabBtn_on_click(self._left_tabBtn_event)
         self.tab0.set_init()
         self.tab1.set_init()
+        self.tab4.set_init()
+        self.tab5.set_init()
 
     def tab_change(self, to_tab_idx:en.TabIdx):
         for _tab in self.rgtTabs.controls:
@@ -447,7 +621,8 @@ def main(page: ft.Page):
     page.window.on_event = window_close_event
 
     _mgr_settingData.read_setting()
-    print(_mgr_settingData.settingData)
+    _mgr_gjfData.set_init()
+    #print(_mgr_settingData.settingData)
     for _name in _mgr_filePickers:
         page.overlay.append(_mgr_filePickers[_name])
     page.update()
@@ -465,13 +640,6 @@ if __name__ == '__main__':
     _mgr_cellData = Mgr_CellData()
     _mgr_settingData = Mgr_SettingData()
     _mgr_filePickers = Mgr_FilePickers()
+    _mgr_gjfData = Mgr_GJFData()
     _app_mainFrame = AppMainFrame()
     ft.app(target=main)
-    """
-    test_mgr_cif = Mgr_CellData()
-    test_mgr_cif.read_cellData(Path("C:\\Users\\asufa\\OneDrive\\ドキュメント\\Python\\MakeCiSupport\\datatext\\outpuuuut.txt"))
-    for _line in test_mgr_cif.cellData:
-        print(f'{_line} : {test_mgr_cif.cellData[_line]}')
-    print(test_mgr_cif.savedPath)
-    #print(os.getcwd())
-    """
