@@ -549,11 +549,6 @@ class App_ExitConfirmDlg(ft.AlertDialog):
         raise NameError("このメソッドは実装時に上書きが必須です。")
 
 
-class App_list_CellData_Value():
-    def __init__(self, cell_data_label:en.CellDataLbl, value:str):
-        self.LABEL = cell_data_label
-        self.VALUE = value
-
 class App_dict_CellData(Dict[str, str]):
     def __init__(self):
         super().__init__()
@@ -581,31 +576,14 @@ class App_dict_CellData(Dict[str, str]):
                 #self.atomsNum = _n + 1
                 return self[ifLbl]
 
+    def get_atoms_list(self) -> List[str]:
+        atoms_list:List[str] = []
+        for _lbl in self:
+            if 'atoms' in _lbl:
+                atoms_list.append(self[_lbl])
+        return atoms_list
 
-class App_list_CellData(List[App_list_CellData_Value]):
-    def __init__(self):
-        pass
 
-    def append(self, object: App_list_CellData_Value):
-        for _data in self:
-            if object.LABEL == _data.LABEL:
-                if object.LABEL == en.CellDataLbl.ATOMS:
-                    if object.VALUE == _data.VALUE:
-                        self.remove(_data)
-                        break
-                else:
-                    self.remove(_data)
-                    break
-        super().append(object)
-
-    def append_value(self, cell_data_label:en.CellDataLbl, value:str):
-        self.append(App_list_CellData_Value(cell_data_label, value))
-
-    def get_value(self, cell_data_label:en.CellDataLbl) -> App_list_CellData_Value:
-        for _value in self:
-            if _value.LABEL == cell_data_label:
-                return _value
-        raise IndexError(f'{cell_data_label} is not in this list.')
 
 class App_dict_Setting(Dict[en.SettingLabel, str]):
     def __init__(self):

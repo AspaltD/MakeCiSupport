@@ -8,6 +8,7 @@ import copy
 
 import enEnums as en
 import frmInterfaces as itf
+import mdAutoRun as auto
 
 
 LATEST_VER_TYPE = en.AppVerType.BETA
@@ -109,8 +110,8 @@ class Mgr_CellData():
                 _lineData = _line.split()
                 if _lineData[0] in en.CellDataLbl:
                     valueData = '_'.join(_lineData[1:])
-                    valueData.strip("'")
                     valueData = re.sub(r"\(\d+\)", "", valueData)
+                    valueData = valueData.strip("'")
                     new_cellData[_lineData[0]] = valueData
                     continue
                 #* cifファイル用原子座標
@@ -181,11 +182,6 @@ class Mgr_CellData():
     def commit_save_cellData(self, new_cellData:itf.App_dict_CellData, save_path:Optional[Path]=None):
         if new_cellData[en.CellDataLbl.STATE.value] != 'data_picked':
             raise ValueError("cellData is not picked.")
-        #self.last_cellData = itf.App_dict_CellData()
-        #for _lbl in self.cellData:
-        #    if 'atoms' in _lbl:
-        #        self.last_cellData['atoms'] = copy.deepcopy(self.cellData[_lbl])
-        #    self.last_cellData[copy.deepcopy(_lbl)] = copy.deepcopy(self.cellData[_lbl])
         self.last_cellData = copy.deepcopy(self.cellData)
         self.cellData = new_cellData
         print("saved")
@@ -231,6 +227,7 @@ class Tab0_CIFSelect(itf.Rgt_tab_0_CIFSelect):
             _mgr_settingData.change_setting(en.SettingLabel.CIF_PATH, str(pickedCIF_path.resolve()))
             _mgr_cellData.read_cellData(pickedCIF_path)
             _app_mainFrame.tab1.insert_cell_data()
+            _app_mainFrame.tab3.txtf_cifName.value = str(pickedCIF_path.resolve())
         _app_mainFrame.tab_change(en.TabIdx.CIF_PREVIEW)
 
     def readTXT_event(self, e:ft.ControlEvent):
@@ -246,6 +243,7 @@ class Tab0_CIFSelect(itf.Rgt_tab_0_CIFSelect):
             _mgr_settingData.change_setting(en.SettingLabel.TXT_PATH, str(pickedTXT_path.resolve()))
             _mgr_cellData.read_cellData(pickedTXT_path)
             _app_mainFrame.tab1.insert_cell_data()
+            _app_mainFrame.tab3.txtf_cifName.value = str(pickedTXT_path.resolve())
         _app_mainFrame.tab_change(en.TabIdx.CIF_PREVIEW)
 
 class Tab1_CIFPreview(itf.Rgt_tab_1_CIFPreview):
@@ -355,8 +353,8 @@ class Tab1_CIFPreview(itf.Rgt_tab_1_CIFPreview):
         self.update()
 
     def save_go_cellData_event(self, e:ft.ControlEvent):
-        pass
-
+        self.commit_cellData()
+        _app_mainFrame.start_ins_ci_auto()
 
 class Tab3_BuilderResult(itf.Rgt_tab_3_BuilderResult):
     def __init__(self):
@@ -368,6 +366,7 @@ class AppMainFrame(ft.Container):
         super().__init__(
             expand=True,
         )
+        self.ciAuto = auto.Ci_AutoRun(ATOMS_SPLIT)
         self.leftTabChBar = itf.Left_box_TabChangeBar()
         self.tab99 = itf.Rgt_tab_99_PlaceHolder()
         self.tab0 = Tab0_CIFSelect()
@@ -415,6 +414,14 @@ class AppMainFrame(ft.Container):
         if not isinstance(e.control, itf.Left_btn_TabChange): return
         self.tab_change(e.control.tabIdx)
         self.update()
+
+    def start_ins_ci_auto(self):
+        exe_path = self.tab0.pickBuilder.pickedPath
+        if exe_path is None:
+            raise ValueError("Builder.exe path is not enter.")
+        self.tab_change(en.TabIdx.APP_LOG)
+        self.ciAuto.auto_atom_info_insert(exe_path, _mgr_cellData.cellData)
+        self.tab_change(en.TabIdx.BUILDER_RESULT)
 
 
 class App_ExitConfirmDlg(itf.App_ExitConfirmDlg):
